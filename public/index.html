@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Curling Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #eee;
+      font-family: 'Segoe UI', sans-serif;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #label {
+      font-size: 4vw;
+      margin-bottom: 2vh;
+      text-align: center;
+    }
+
+    #message {
+      font-size: 2.5vw;
+      margin-bottom: 4vh;
+      color: #ccc;
+      text-align: center;
+      max-width: 90vw;
+      line-height: 1.2;
+    }
+
+    #timer {
+      font-size: 25vw;
+      font-weight: bold;
+      line-height: 1;
+      transition: color 0.5s;
+      text-align: center;
+    }
+
+    .warning {
+      color: orange;
+    }
+
+    .critical {
+      color: red;
+    }
+
+    #timer .small-sec {
+      font-size: 0.3em;
+      vertical-align: super;
+    }
+  </style>
+</head>
+<body>
+  <div id="label">Loading...</div>
+  <div id="message"></div>
+  <div id="timer">--:--</div>
+
+  <script>
+    let timerState = {
+      status: "idle",
+      timeRemaining: 0,
+      lastUpdated: Date.now(),
+      message: ""
+    };
+
+    function formatTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+
+  // Show hour as single digit (no leading zero)
+  const hh = h.toString();
+  const mm = String(m).padStart(2, '0');
+
+  return `${hh}:${mm}<span class="small-sec">:${String(s).padStart(2, '0')}</span>`;
+}
+
+    function render() {
+      const label = document.getElementById("label");
+      const display = document.getElementById("timer");
+      const messageEl = document.getElementById("message");
+
+      // Update label
+      switch (timerState.status) {
+        case "pre_draw": label.textContent = "Draw starts in:"; break;
+        case "running": label.textContent = "Time remaining:"; break;
+        case "complete": label.textContent = "Draw complete"; break;
+        default: label.textContent = "No draw today";
+      }
+
+      // Update message (optional)
+      messageEl.textContent = timerState.message || "";
+
+      // Style countdown
+      display.className = "";
+      if (timerState.status !== "complete") {
+        if (timerState.timeRemaining < 300) display.classList.add("warning");
+        if (timerState.timeRemaining < 60) display.classList.add("critical");
+      }
+
+      display.innerHTML = formatTime(Math.max(timerState.timeRemaining, 0));
+    }
+
+    function tick() {
+      if (timerState.status !== "complete" && timerState.timeRemaining > 0) {
+        timerState.timeRemaining--;
+        render();
+      }
+    }
+
+    async function syncState() {
+      try {
+        const res = await fetch("/api/timer/state");
+        const data = await res.json();
+        timerState.status = data.status;
+        timerState.timeRemaining = data.timeRemaining;
+        timerState.message = data.message || "";
+        timerState.lastUpdated = Date.now();
+        render();
+      } catch (e) {
+        console.error("Timer sync failed", e);
+      }
+    }
+
+    setInterval(tick, 1000);
+    setInterval(syncState, 30000);
+    syncState();
+  </script>
+</body>
+</html>
