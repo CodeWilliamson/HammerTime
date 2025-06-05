@@ -1,0 +1,2 @@
+# HammerTime
+Curling rink timer
