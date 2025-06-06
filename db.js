@@ -1,6 +1,6 @@
-import Database from 'better-sqlite3';
+import Database from "better-sqlite3";
 
-const db = new Database('./data/schedule.db');
+const db = new Database("./data/schedule.db");
 
 // Initialize table if not exists
 db.exec(`
@@ -14,9 +14,9 @@ db.exec(`
   );
 `);
 
-export function getTodayDraw() {
+export function getCurrentDraw() {
   const now = new Date();
-  const day = now.toLocaleDateString('en-CA', { weekday: 'long' });
+  const day = now.toLocaleDateString("en-CA", { weekday: "long" });
 
   const stmt = db.prepare(`
     SELECT * FROM draws
@@ -25,23 +25,29 @@ export function getTodayDraw() {
   `);
   const draws = stmt.all(day);
 
-  // Pick the first one that is not already completed
+  let lastEndedDraw = null;
+  let nextDraw = null;
+
   for (const draw of draws) {
     const [h, m] = draw.start_time.split(":").map(Number);
     const drawStart = new Date(now);
     drawStart.setHours(h, m, 0, 0);
     const drawEnd = new Date(drawStart.getTime() + draw.duration_minutes * 60000);
 
-    if (now < drawEnd) {
-      return {
-        ...draw,
-        drawStart,
-        drawEnd
-      };
+    if (now >= drawEnd) {
+      // Save most recently completed draw
+      if (!lastEndedDraw || drawEnd > lastEndedDraw.drawEnd) {
+        lastEndedDraw = { ...draw, drawStart, drawEnd };
+      }
+    } else {
+      // First upcoming or currently running draw
+      nextDraw = { ...draw, drawStart, drawEnd };
+      break;
     }
   }
 
-  return null;
+  // Return both so /api/timer/state can decide what to do
+  return { lastEndedDraw, nextDraw };
 }
 
 // db.js additions

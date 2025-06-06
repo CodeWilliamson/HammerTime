@@ -1,5 +1,5 @@
-import express from 'express';
-import { getTodayDraw, getDraws, addDraw, updateDraw, deleteDraw } from './db.js';
+import express from "express";
+import { getCurrentDraw, getDraws, addDraw, updateDraw, deleteDraw } from "./db.js";
 
 const app = express();
 const port = 3000;
@@ -8,49 +8,82 @@ app.use(express.json());
 app.use(express.static("public"));
 
 // Existing timer state route
-app.get('/api/timer/state', (req, res) => {
+app.get("/api/timer/state", (req, res) => {
   const now = new Date();
-  const draw = getTodayDraw();
+  const { lastEndedDraw, nextDraw } = getCurrentDraw();
 
-  if (!draw) {
+  // Case 1: draw is running or starting soon
+  if (nextDraw) {
+    const { drawStart, drawEnd } = nextDraw;
+    const secondsUntilStart = Math.floor((drawStart - now) / 1000);
+    const secondsUntilEnd = Math.floor((drawEnd - now) / 1000);
+    
+    // console.log(`now: ${now}, drawStart: ${drawStart}, drawEnd: ${drawEnd}`);
+
+    if (now >= drawStart && now < drawEnd) {
+      return res.json({
+        status: "running",
+        timeRemaining: secondsUntilEnd,
+        drawLabel: nextDraw.title,
+        drawMessage: nextDraw.message ?? null,
+        targetTime: drawStart.toISOString(),
+      });
+    }
+
+    if (secondsUntilStart <= 600 && secondsUntilStart > 0) {
+      return res.json({
+        status: "pre_draw",
+        timeRemaining: secondsUntilStart,
+        drawLabel: nextDraw.title,
+        drawMessage: nextDraw.message ?? null,
+        targetTime: drawStart.toISOString(),
+      });
+    }
+  }
+
+  // Case 2: recently ended draw (< 10 minutes ago)
+  if (lastEndedDraw) {
+    const secondsSinceEnd = Math.floor((now - lastEndedDraw.drawEnd) / 1000);
+    if (secondsSinceEnd <= 600) {
+      return res.json({
+        status: "complete",
+        timeRemaining: 0,
+        drawLabel: lastEndedDraw.title,
+        drawMessage: lastEndedDraw.message ?? null,
+        targetTime: lastEndedDraw.drawStart.toISOString(),
+      });
+    }
+  }
+
+  // Case 3: no draw now, show next one if it exists
+  if (nextDraw) {
     return res.json({
-      status: "idle",
+      status: "waiting",
       timeRemaining: 0,
-      drawLabel: "No draw scheduled",
-      targetTime: null
+      nextDrawStart: nextDraw.drawStart.toISOString(),
+      nextDrawTitle: nextDraw.title,
+      nextDrawMessage: nextDraw.message ?? null,
     });
   }
 
-  let status, remaining;
-  const { drawStart, drawEnd } = draw;
-
-  if (now < drawStart) {
-    status = "pre_draw";
-    remaining = Math.floor((drawStart - now) / 1000);
-  } else if (now >= drawStart && now < drawEnd) {
-    status = "running";
-    remaining = Math.floor((drawEnd - now) / 1000);
-  } else {
-    status = "complete";
-    remaining = 0;
-  }
-
-  res.json({
-    status,
-    timeRemaining: remaining,
-    drawLabel: draw.title, // <-- fix from your original "draw.label"
-    targetTime: drawStart.toISOString()
+  // Case 4: no draws today
+  return res.json({
+    status: "idle",
+    timeRemaining: 0,
+    drawLabel: "No draw scheduled",
+    drawMessage: null,
+    targetTime: null,
   });
 });
 
 // CRUD API for draws
 
-app.get('/api/draws', (req, res) => {
+app.get("/api/draws", (req, res) => {
   const draws = getDraws();
   res.json(draws);
 });
 
-app.post('/api/draws', (req, res) => {
+app.post("/api/draws", (req, res) => {
   try {
     const id = addDraw(req.body);
     res.status(201).json({ id });
@@ -59,7 +92,7 @@ app.post('/api/draws', (req, res) => {
   }
 });
 
-app.put('/api/draws/:id', (req, res) => {
+app.put("/api/draws/:id", (req, res) => {
   try {
     updateDraw(req.params.id, req.body);
     res.status(204).end();
@@ -68,7 +101,7 @@ app.put('/api/draws/:id', (req, res) => {
   }
 });
 
-app.delete('/api/draws/:id', (req, res) => {
+app.delete("/api/draws/:id", (req, res) => {
   try {
     deleteDraw(req.params.id);
     res.status(204).end();
