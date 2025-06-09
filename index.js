@@ -1,5 +1,5 @@
 import express from "express";
-import { getCurrentDraw, getDraws, addDraw, updateDraw, deleteDraw } from "./db.js";
+import { getCurrentDraw, getConfig, getAllDraws, getDrawById, addDraw, updateDraw, deleteDraw } from "./db.js";
 
 const app = express();
 const port = 3000;
@@ -9,6 +9,19 @@ app.use(express.static("public"));
 
 // Existing timer state route
 app.get("/api/timer/state", (req, res) => {
+  // Check if config has changed
+  const clientConfigTimestamp = new Date(req.query.lastConfigSeenAt || 0);
+  const config = getConfig();
+  const configChanged = new Date(config.updated_at) > clientConfigTimestamp;
+  let state = {};
+  // Append config only if changed
+  if (configChanged) {
+    state.config = {
+      ...config,
+      updated_at: config.updated_at
+    };
+  }
+
   const now = new Date();
   const { lastEndedDraw, nextDraw } = getCurrentDraw();
 
@@ -26,7 +39,8 @@ app.get("/api/timer/state", (req, res) => {
         timeRemaining: secondsUntilEnd,
         drawLabel: nextDraw.title,
         drawMessage: nextDraw.message ?? null,
-        targetTime: drawStart.toISOString(),
+        targetTime: drawEnd.toISOString(),
+        ...state,
       });
     }
 
@@ -37,6 +51,7 @@ app.get("/api/timer/state", (req, res) => {
         drawLabel: nextDraw.title,
         drawMessage: nextDraw.message ?? null,
         targetTime: drawStart.toISOString(),
+        ...state,
       });
     }
   }
@@ -50,7 +65,8 @@ app.get("/api/timer/state", (req, res) => {
         timeRemaining: 0,
         drawLabel: lastEndedDraw.title,
         drawMessage: lastEndedDraw.message ?? null,
-        targetTime: lastEndedDraw.drawStart.toISOString(),
+        targetTime: lastEndedDraw.drawEnd.toISOString(),
+        ...state,
       });
     }
   }
@@ -61,8 +77,10 @@ app.get("/api/timer/state", (req, res) => {
       status: "waiting",
       timeRemaining: 0,
       nextDrawStart: nextDraw.drawStart.toISOString(),
+      targetTime: nextDraw.drawStart.toISOString(),
       nextDrawTitle: nextDraw.title,
       nextDrawMessage: nextDraw.message ?? null,
+      ...state,
     });
   }
 
@@ -73,14 +91,24 @@ app.get("/api/timer/state", (req, res) => {
     drawLabel: "No draw scheduled",
     drawMessage: null,
     targetTime: null,
+    ...state,
   });
 });
 
 // CRUD API for draws
 
 app.get("/api/draws", (req, res) => {
-  const draws = getDraws();
+  const draws = getAllDraws();
   res.json(draws);
+});
+
+app.get('/api/draws/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const draw = getDrawById(id);
+  if (!draw) {
+    return res.status(404).json({ error: 'Draw not found' });
+  }
+  res.json(draw);
 });
 
 app.post("/api/draws", (req, res) => {

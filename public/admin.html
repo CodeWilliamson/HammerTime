@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Draw Admin Calendar</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #fafafa;
+    }
+
+    .calendar-container {
+      padding: 1rem;
+      position: relative;
+    }
+
+    .day-tabs {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .day-tabs button {
+      flex: 1;
+      margin: 4px;
+      padding: 0.5rem;
+      border: none;
+      background-color: #ddd;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .day-tabs button.active {
+      background-color: #333;
+      color: #fff;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .day-column {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 0.75rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .day-column h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+    }
+
+    .draw-card {
+      background: #f0f0f0;
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      border-left: 4px solid #0077cc;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    @media (min-width: 700px) {
+      .day-tabs { display: none; }
+      .calendar-grid { grid-template-columns: repeat(7, 1fr); }
+    }
+
+    .add-btn {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #0077cc;
+      color: white;
+      border: none;
+      padding: 0.75rem 1rem;
+      border-radius: 50%;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.active { display: flex; }
+
+    .modal-content {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 6px;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .modal-content h3 {
+      margin-top: 0;
+    }
+
+    .modal-content form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-content label {
+      margin-top: 0.5rem;
+    }
+
+    .modal-content input, .modal-content textarea, .modal-content select {
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+
+    .modal-content button {
+      margin-top: 1rem;
+      padding: 0.6rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .close-btn {
+      background: #ccc;
+    }
+
+    .save-btn {
+      background: #0077cc;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="calendar-container">
+    <h2>Draw Admin</h2>
+    <div class="day-tabs"></div>
+    <div class="calendar-grid"></div>
+    <button class="add-btn" onclick="openForm()">+</button>
+  </div>
+
+  <!-- Modal Form -->
+  <div class="modal" id="formModal">
+    <div class="modal-content">
+      <h3 id="formTitle">Add Draw</h3>
+      <form id="drawForm">
+        <input type="hidden" name="id" />
+        <label>Day of Week</label>
+        <select name="day_of_week" required>
+          <option value="">Select</option>
+          ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(d => `<option value="${d}">${d}</option>`).join('')}
+        </select>
+        <label>Title</label>
+        <input name="title" required />
+        <label>Message</label>
+        <textarea name="message"></textarea>
+        <label>Start Time (HH:MM)</label>
+        <input name="start_time" required />
+        <label>Duration (minutes)</label>
+        <input name="duration_minutes" type="number" required />
+        <button type="submit" class="save-btn">Save</button>
+        <button type="button" class="close-btn" onclick="closeForm()">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const daysOfWeek = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    let currentDayIndex = new Date().getDay();
+
+    async function loadDraws() {
+      const res = await fetch('/api/draws');
+      const draws = await res.json();
+      const grouped = groupByDay(draws);
+      renderTabs();
+      renderCalendar(grouped);
+    }
+
+    function groupByDay(draws) {
+      return draws.reduce((acc, draw) => {
+        if (!acc[draw.day_of_week]) acc[draw.day_of_week] = [];
+        acc[draw.day_of_week].push(draw);
+        return acc;
+      }, {});
+    }
+
+    function renderTabs() {
+      const tabContainer = document.querySelector('.day-tabs');
+      tabContainer.innerHTML = '';
+      daysOfWeek.forEach((day, idx) => {
+        const btn = document.createElement('button');
+        btn.textContent = day;
+        btn.className = (idx === currentDayIndex) ? 'active' : '';
+        btn.onclick = () => {
+          currentDayIndex = idx;
+          loadDraws();
+        };
+        tabContainer.appendChild(btn);
+      });
+    }
+
+    function renderCalendar(grouped) {
+      const grid = document.querySelector('.calendar-grid');
+      grid.innerHTML = '';
+      const isMobile = window.innerWidth < 700;
+      const daysToShow = isMobile ? [daysOfWeek[currentDayIndex]] : daysOfWeek;
+
+      daysToShow.forEach(day => {
+        const col = document.createElement('div');
+        col.className = 'day-column';
+        col.innerHTML = `<h3>${day}</h3>`;
+        (grouped[day] || []).forEach(draw => {
+          const div = document.createElement('div');
+          div.className = 'draw-card';
+          div.innerHTML = `<strong>${draw.title}</strong><br>${draw.start_time} (${draw.duration_minutes} min)<br><small>${draw.message || ''}</small>`;
+          div.onclick = () => openForm(draw);
+          col.appendChild(div);
+        });
+        grid.appendChild(col);
+      });
+    }
+
+    function openForm(draw = null) {
+      const modal = document.getElementById('formModal');
+      const form = document.getElementById('drawForm');
+      document.getElementById('formTitle').textContent = draw ? 'Edit Draw' : 'Add Draw';
+      form.reset();
+      form.id.value = draw?.id || '';
+      form.day_of_week.value = draw?.day_of_week || '';
+      form.title.value = draw?.title || '';
+      form.message.value = draw?.message || '';
+      form.start_time.value = draw?.start_time || '';
+      form.duration_minutes.value = draw?.duration_minutes || '';
+      modal.classList.add('active');
+    }
+
+    function closeForm() {
+      document.getElementById('formModal').classList.remove('active');
+    }
+
+    document.getElementById('drawForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        day_of_week: form.day_of_week.value,
+        title: form.title.value,
+        message: form.message.value,
+        start_time: form.start_time.value,
+        duration_minutes: parseInt(form.duration_minutes.value)
+      };
+
+      if (form.id.value) {
+        await fetch(`/api/draws/${form.id.value}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } else {
+        await fetch('/api/draws', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      }
+
+      closeForm();
+      loadDraws();
+    });
+
+    window.addEventListener('resize', loadDraws);
+    loadDraws();
+  </script>
+</body>
+</html>

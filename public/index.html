@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>Curling Timer</title>
+  <title>HammerTime</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     html,
@@ -49,11 +49,11 @@
     }
 
     .warning {
-      color: orange;
+      color: orange !important;
     }
 
     .critical {
-      color: red;
+      color: red !important;
     }
 
     #timer .small-sec {
@@ -76,6 +76,29 @@
       lastUpdated: Date.now(),
       message: ""
     };
+
+    function applyConfig(config) {
+      if (config.background_color) {
+        document.body.style.background = config.background_color;
+        document.documentElement.style.backgroundColor = config.background_color; 
+      }
+
+      if (config.timer_color) {
+        const timer = document.getElementById("timer");
+        timer.style.color = config.timer_color; // base color — overridden by warning/critical classes if present
+      }
+
+      if (config.status_color) {
+        const label = document.getElementById("label");
+        label.style.color = config.status_color;
+      }
+
+      if (config.message_color) {
+        const message = document.getElementById("message");
+        message.style.color = config.message_color;
+      }
+    }
+
 
     function formatTime(seconds) {
       const h = Math.floor(seconds / 3600);
@@ -119,35 +142,60 @@
       document.body.classList.toggle("no-timer", !showTimer);
     }
 
+    // function tick() {
+    //   if (timerState.status !== "complete" && timerState.timeRemaining > 0) {
+    //     timerState.timeRemaining--;
+    //     render();
+    //     if (timerState.timeRemaining <= 0) {
+    //       syncState();
+    //     }
+    //   }
+    // }
+
     function tick() {
-      if (timerState.status !== "complete" && timerState.timeRemaining > 0) {
-        timerState.timeRemaining--;
+      if (["pre_draw", "running", "complete"].includes(timerState.status)) {
+        const now = Date.now();
+        timerState.timeRemaining = Math.floor((timerState.targetTimestamp - now) / 1000);
         render();
+
         if (timerState.timeRemaining <= 0) {
-          syncState();
+          syncState(); // force refresh
         }
       }
     }
 
-    let previousStatus = null; // Add this above syncState()
 
+    let previousStatus = null; // Add this above syncState()
+    let lastConfigSeenAt = null;
     async function syncState() {
       try {
-        const res = await fetch("/api/timer/state");
+        const params = new URLSearchParams();
+        if (lastConfigSeenAt) {
+          params.set("lastConfigSeenAt", lastConfigSeenAt.toISOString());
+        }
+
+        const res = await fetch(`/api/timer/state?${params.toString()}`);
         const data = await res.json();
 
-        const oldStatus = timerState.status;
-
-        // ✅ Clamp to prevent flickering to 'waiting' from pre_draw/running
-        if (oldStatus === "pre_draw" && data.status === "waiting") {
-          console.log("Suppressing flicker to 'waiting'");
-          setTimeout(() => syncState(), 1000);
-          return;
+        if (data.config) {
+          applyConfig(data.config); // your custom styling logic
+          lastConfigSeenAt = new Date(data.config.updated_at);
         }
+
+        const oldStatus = timerState.status;
 
         timerState.status = data.status;
         timerState.timeRemaining = data.timeRemaining ?? 0;
         timerState.lastUpdated = Date.now();
+        timerState.targetTimestamp = new Date(data.targetTime).getTime();
+
+        // ✅ Clamp to prevent flickering to 'waiting' from pre_draw/running
+        if (oldStatus === "pre_draw" && data.status === "waiting" && (new Date(data.nextDrawStart) - Date.now()) <= 2000) {
+          console.log("Suppressing flicker to 'waiting'");
+          console.log(`${new Date(data.nextDrawStart) - Date.now()}`);
+          setTimeout(() => syncState(), 1000);
+          return;
+        }
 
         // Detect transition from pre_draw to running
         if ((oldStatus === "pre_draw" || oldStatus === "waiting") && data.status === "running") {
