@@ -25,6 +25,20 @@ db.exec(`
 );
 `);
 
+const existingConfigCount = db.prepare(`SELECT COUNT(*) as count FROM timer_config`).get().count;
+
+if (existingConfigCount === 0) {
+  db.prepare(`
+    INSERT INTO timer_config (background_color, timer_color, status_color, message_color)
+    VALUES (@background_color, @timer_color, @status_color, @message_color)
+  `).run({
+    background_color: '#111111',
+    timer_color: '#eeeeee',
+    status_color: '#eeeeee',
+    message_color: '#cccccc'
+  });
+}
+
 export function getCurrentDraw() {
   const now = new Date();
   const day = now.toLocaleDateString("en-CA", { weekday: "long" });
