@@ -2,7 +2,7 @@ import express from "express";
 import { getCurrentDraw, getConfig, getAllDraws, getDrawById, addDraw, updateDraw, deleteDraw } from "./db.js";
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 80;
 
 app.use(express.json());
 app.use(express.static("public"));
