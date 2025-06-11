@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hammer Time Draw Admin Calendar</title>
+  <title>Hammer Time Draw Calendar</title>
   <style>
     body {
       font-family: sans-serif;
@@ -112,16 +112,19 @@
       position: absolute;
       left: 0;
       right: 0;
-      margin-left: 2px;
-      margin-right: 2px;
+      margin-left: 5px;
+      margin-right: 5px;
       background: #e1f0ff;
       border-left: 4px solid #0077cc;
+      border-top: 1px solid #dfdfdf;
+      border-bottom: 1px solid #dfdfdf;
+      border-right: 1px solid #dfdfdf;
       padding: 4px;
       font-size: 0.8rem;
       border-radius: 4px;
       box-sizing: border-box;
       cursor: pointer;
-      z-index: 1
+      z-index: 1;
     }
 
     .time-line {
@@ -210,6 +213,7 @@
       padding: 0.6rem;
       font-size: 1rem;
       cursor: pointer;
+      border-radius: 6px;
     }
 
     .close-btn {
@@ -218,6 +222,11 @@
 
     .save-btn {
       background: #0077cc;
+      color: white;
+    }
+
+    .delete-btn {
+      background: #ff6262;
       color: white;
     }
 
@@ -356,10 +365,11 @@
         dayColumn.className = 'day-column';
         dayWrapper.innerHTML = `<h3 class="day-label">${day}</h3>`;
 
-        for (let h = 1; h <= 33; h++) {
+        // Generate time lines
+        for (let h = 1; h <= 31; h++) {
           const line = document.createElement('div');
           line.className = 'time-line';
-          line.style.top = `${h * TIME_LINE_HEIGHT + TIME_LINE_OFFSET}px`;
+          line.style.top = `${(h * TIME_LINE_HEIGHT) + TIME_LINE_HEIGHT + TIME_LINE_OFFSET}px`;
           dayWrapper.appendChild(line);
         }
 
