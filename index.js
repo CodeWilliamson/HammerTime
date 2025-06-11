@@ -7,6 +7,11 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static("public"));
 
+app.get('/admin', (req, res) => {
+  res.redirect('/admin.html');
+});
+
+
 // Existing timer state route
 app.get("/api/timer/state", (req, res) => {
   // Check if config has changed
