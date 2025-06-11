@@ -142,16 +142,6 @@
       document.body.classList.toggle("no-timer", !showTimer);
     }
 
-    // function tick() {
-    //   if (timerState.status !== "complete" && timerState.timeRemaining > 0) {
-    //     timerState.timeRemaining--;
-    //     render();
-    //     if (timerState.timeRemaining <= 0) {
-    //       syncState();
-    //     }
-    //   }
-    // }
-
     function tick() {
       if (["pre_draw", "running", "complete"].includes(timerState.status)) {
         const now = Date.now();

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Draw Admin Calendar</title>
+  <title>Hammer Time Draw Admin Calendar</title>
   <style>
     body {
       font-family: sans-serif;
@@ -45,19 +45,57 @@
       display: grid;
       grid-template-columns: 1fr;
       gap: 1rem;
+      flex-grow: 1;
+    }
+
+    .time-slot {
+      flex: 1;
+      border-top: 1px solid #eee;
+      padding: 0.25rem;
+      position: relative;
+      font-size: 0.8rem;
+      min-height: 30px;
+    }
+
+    .day-wrapper {
+      position: relative;
+      flex: 1;
     }
 
     .day-column {
+      position: relative;
+      height: 960px;
+      /* 16 hours * 60px */
       background: #fff;
       border: 1px solid #ccc;
       border-radius: 6px;
-      padding: 0.75rem;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
     }
 
-    .day-column h3 {
-      margin-top: 0;
-      font-size: 1.1rem;
+    .day-label {
+      height: 35px;
+      margin: 0px;
+    }
+
+    .time-slot.filled {
+      background-color: #e1f0ff;
+      border-left: 4px solid #0077cc;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .time-labels {
+      width: 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-right: 8px;
+      margin-top: 35px;
+    }
+
+    .time-label {
+      font-weight: normal;
+      color: #666;
     }
 
     .draw-card {
@@ -68,6 +106,32 @@
       border-radius: 4px;
       font-size: 0.9rem;
       cursor: pointer;
+    }
+
+    .draw-card-abs {
+      position: absolute;
+      left: 0;
+      right: 0;
+      margin-left: 2px;
+      margin-right: 2px;
+      background: #e1f0ff;
+      border-left: 4px solid #0077cc;
+      padding: 4px;
+      font-size: 0.8rem;
+      border-radius: 4px;
+      box-sizing: border-box;
+      cursor: pointer;
+      z-index: 1
+    }
+
+    .time-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 0;
+      border-top: 1px dashed #ccc;
+      z-index: 1;
+      pointer-events: none;
     }
 
     @media (min-width: 700px) {
@@ -104,6 +168,7 @@
       background: rgba(0, 0, 0, 0.5);
       justify-content: center;
       align-items: center;
+      z-index: 9999;
     }
 
     .modal.active {
@@ -111,7 +176,7 @@
     }
 
     .modal-content {
-      position:relative;
+      position: relative;
       background: white;
       padding: 1.5rem;
       border-radius: 6px;
@@ -174,9 +239,16 @@
 
 <body>
   <div class="calendar-container">
-    <h2>Draw Admin</h2>
+    <h2>Hammer Time Draw Admin Calendar</h2>
     <div class="day-tabs"></div>
-    <div class="calendar-grid"></div>
+
+    <div style="display: flex; position: relative;">
+      <div class="time-labels"></div>
+      <div class="calendar-grid">
+        <!-- Lines and columns go here -->
+      </div>
+    </div>
+
     <button class="add-btn" onclick="openForm()">+</button>
   </div>
 
@@ -251,23 +323,70 @@
     function renderCalendar(grouped) {
       const grid = document.querySelector('.calendar-grid');
       grid.innerHTML = '';
+
+      // Generate time labels (8am to 11pm)
+      const labelContainer = document.querySelector('.time-labels');
+      labelContainer.innerHTML = '';
+
+      for (let hour = 8; hour <= 23; hour++) {
+        const label = document.createElement('div');
+        label.style.height = '60px'; // 1 hour = 60px
+        label.style.paddingRight = '6px';
+        label.style.textAlign = 'right';
+        label.style.fontSize = '0.75rem';
+        label.style.color = '#888';
+        label.textContent = `${hour.toString().padStart(2, '0')}:00`;
+        labelContainer.appendChild(label);
+      }
+
       const isMobile = window.innerWidth < 700;
       const daysToShow = isMobile ? [daysOfWeek[currentDayIndex]] : daysOfWeek;
 
+      const HOUR_HEIGHT = 60; // 60px per hour = 1px per minute
+      const START_HOUR = 8;
+      const TIME_LINE_HEIGHT = 30;
+      const TIME_LINE_OFFSET = 5;
+
       daysToShow.forEach(day => {
-        const col = document.createElement('div');
-        col.className = 'day-column';
-        col.innerHTML = `<h3>${day}</h3>`;
-        (grouped[day] || []).forEach(draw => {
+        const dayWrapper = document.createElement('div');
+        dayWrapper.className = 'day-wrapper';
+
+        const dayColumn = document.createElement('div');
+        dayColumn.className = 'day-column';
+        dayWrapper.innerHTML = `<h3 class="day-label">${day}</h3>`;
+
+        for (let h = 1; h <= 33; h++) {
+          const line = document.createElement('div');
+          line.className = 'time-line';
+          line.style.top = `${h * TIME_LINE_HEIGHT + TIME_LINE_OFFSET}px`;
+          dayWrapper.appendChild(line);
+        }
+
+        dayWrapper.appendChild(dayColumn);
+        const draws = (grouped[day] || []).slice().sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+        draws.forEach(draw => {
+          const [hourStr, minStr] = draw.start_time.split(':');
+          const startMinutes = (parseInt(hourStr) * HOUR_HEIGHT + parseInt(minStr)) - START_HOUR * 60;
+          const top = startMinutes;
+          const height = draw.duration_minutes;
+
           const div = document.createElement('div');
-          div.className = 'draw-card';
-          div.innerHTML = `<strong>${draw.title}</strong><br>${draw.start_time} (${draw.duration_minutes} min)<br><small>${draw.message || ''}</small>`;
+          div.className = 'draw-card-abs';
+          div.style.top = `${top}px`;
+          div.style.height = `${height}px`;
+          div.innerHTML = `
+        <strong>${draw.title}</strong><br>
+        <small>${draw.start_time} (${draw.duration_minutes} min)</small>
+      `;
           div.onclick = () => openForm(draw);
-          col.appendChild(div);
+          dayColumn.appendChild(div);
         });
-        grid.appendChild(col);
+
+        grid.appendChild(dayWrapper);
       });
     }
+
 
     function openForm(draw = null) {
       const modal = document.getElementById('formModal');
