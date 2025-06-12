@@ -25,4 +25,4 @@ jobs:
         run: sudo /bin/systemctl restart curling-timer.service
 
       - name: Refresh Running Brower
-        run: /home/timer/Desktop/refresh-kiosk.sh
+        run: /home/timer/Desktop/start-kiosk.sh
