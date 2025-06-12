@@ -1,16 +1,21 @@
 import express from "express";
 import { getCurrentDraw, getConfig, getAllDraws, getDrawById, addDraw, updateDraw, deleteDraw } from "./db.js";
+import authRouter, { requireAuth } from "./auth.js";
+import cookieParser from "cookie-parser";
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.static("public"));
 
 app.get('/admin', (req, res) => {
   res.redirect('/admin.html');
 });
 
+// Auth routes
+app.use('/auth', authRouter);
 
 // Existing timer state route
 app.get("/api/timer/state", (req, res) => {
@@ -102,12 +107,12 @@ app.get("/api/timer/state", (req, res) => {
 
 // CRUD API for draws
 
-app.get("/api/draws", (req, res) => {
+app.get("/api/draws", requireAuth,(req, res) => {
   const draws = getAllDraws();
   res.json(draws);
 });
 
-app.get('/api/draws/:id', (req, res) => {
+app.get('/api/draws/:id', requireAuth, (req, res) => {
   const id = parseInt(req.params.id);
   const draw = getDrawById(id);
   if (!draw) {
@@ -116,7 +121,7 @@ app.get('/api/draws/:id', (req, res) => {
   res.json(draw);
 });
 
-app.post("/api/draws", (req, res) => {
+app.post("/api/draws", requireAuth, (req, res) => {
   try {
     const id = addDraw(req.body);
     res.status(201).json({ id });
@@ -125,7 +130,7 @@ app.post("/api/draws", (req, res) => {
   }
 });
 
-app.put("/api/draws/:id", (req, res) => {
+app.put("/api/draws/:id", requireAuth, (req, res) => {
   try {
     updateDraw(req.params.id, req.body);
     res.status(204).end();
@@ -134,7 +139,7 @@ app.put("/api/draws/:id", (req, res) => {
   }
 });
 
-app.delete("/api/draws/:id", (req, res) => {
+app.delete("/api/draws/:id", requireAuth, (req, res) => {
   try {
     deleteDraw(req.params.id);
     res.status(204).end();

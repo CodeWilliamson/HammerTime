@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 
 const db = new Database("./data/schedule.db");
+import bcrypt from 'bcryptjs';
 
 // Initialize table if not exists
 db.exec(`
@@ -37,6 +38,20 @@ if (existingConfigCount === 0) {
     status_color: '#eeeeee',
     message_color: '#cccccc'
   });
+}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL
+  );
+`);
+
+const adminExists = db.prepare(`SELECT COUNT(*) AS count FROM users`).get().count;
+if (adminExists === 0) {
+  const hash = bcrypt.hashSync("timer", 10);
+  db.prepare(`INSERT INTO users (username, password_hash) VALUES (?, ?)`).run("timer", hash);
 }
 
 export function getCurrentDraw() {
@@ -147,4 +162,9 @@ export function getAllDraws(dayOfWeek = null) {
 export function getDrawById(id) {
   const stmt = db.prepare(`SELECT * FROM draws WHERE id = ?`);
   return stmt.get(id);
+}
+
+export function getUserByUsername(username) {
+  const stmt = db.prepare(`SELECT * FROM users WHERE username = ?`);
+  return stmt.get(username);
 }

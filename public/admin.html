@@ -5,14 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hammer Time Draw Calendar</title>
+  <!-- import main.css style sheet -->
+  <link rel="stylesheet" href="main.css" />
   <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #fafafa;
-    }
-
     .calendar-container {
       padding: 1rem;
       position: relative;
@@ -300,7 +295,13 @@
     let currentDayIndex = new Date().getDay();
 
     async function loadDraws() {
-      const res = await fetch('/api/draws');
+      const res = await fetch('/api/draws', {
+        credentials: 'include'
+      });
+      if (res.status === 403 || res.status === 401) {
+        window.location.href = '/login.html';
+        return;
+      }
       const draws = await res.json();
       const grouped = groupByDay(draws);
       renderTabs();
@@ -422,7 +423,7 @@
         const form = document.getElementById('drawForm');
         const id = form.id.value;
         const res = await fetch(`/api/draws/${id}`, {
-          method: 'DELETE'
+          method: 'DELETE', credentials: 'include'
         });
         if (!res.ok) {
           alert('Failed to delete draw.');
@@ -447,12 +448,14 @@
         await fetch(`/api/draws/${form.id.value}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(data)
         });
       } else {
         await fetch('/api/draws', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(data)
         });
       }
