@@ -25,4 +25,4 @@ jobs:
         run: sudo /bin/systemctl restart curling-timer.service
 
       - name: Refresh Running Brower
-        run: DISPLAY=:0 xdotool search --onlyvisible --class chromium windowactivate --sync key --clearmodifiers F5
+        run: /home/timer/refresh-kiosk.sh
