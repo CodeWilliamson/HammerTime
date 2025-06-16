@@ -10,7 +10,7 @@ const SECRET = process.env.JWT_SECRET || "timertimertimer";
 // Login route
 router.post("/login", (req, res) => {
   const { username, password } = req.body;
-  const user = getUserByUsername(username);
+  const user = getUserByUsername(username.toLowerCase());
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
@@ -26,11 +26,11 @@ router.post("/login", (req, res) => {
 
 router.post("/change-password", (req, res) => {
   const { username, oldPassword, newPassword } = req.body;
-  const user = getUserByUsername(username);
+  const user = getUserByUsername(username.toLowerCase());
   if (!user || !bcrypt.compareSync(oldPassword, user.password_hash)) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
-  const success = updatePassword(username, newPassword);
+  const success = updatePassword(username.toLowerCase(), newPassword);
 
   if (!success) {
     return res.status(500).json({ error: "Failed to update password" });

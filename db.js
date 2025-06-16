@@ -166,12 +166,12 @@ export function getDrawById(id) {
 
 export function getUserByUsername(username) {
   const stmt = db.prepare(`SELECT * FROM users WHERE username = ?`);
-  return stmt.get(username);
+  return stmt.get(username.toLowerCase());
 }
 
 export function updatePassword(username, newPassword) {
   const hash = bcrypt.hashSync(newPassword, 10);
   const stmt = db.prepare(`UPDATE users SET password_hash = ? WHERE username = ?`);
-  const result = stmt.run(hash, username);
+  const result = stmt.run(hash, username.toLowerCase());
   return result.changes > 0;
 }
