@@ -1,7 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import { getUserByUsername } from "./db.js";
+import { getUserByUsername, updatePassword } from "./db.js";
 
 const router = express.Router();
 
@@ -24,6 +24,22 @@ router.post("/login", (req, res) => {
   res.json({ success: true });
 });
 
+router.post("/change-password", (req, res) => {
+  const { username, oldPassword, newPassword } = req.body;
+  const user = getUserByUsername(username);
+  if (!user || !bcrypt.compareSync(oldPassword, user.password_hash)) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+  const success = updatePassword(username, newPassword);
+
+  if (!success) {
+    return res.status(500).json({ error: "Failed to update password" });
+  }
+
+  res.clearCookie('token', { httpOnly: true, sameSite: 'strict' });
+  res.json({ success });
+});
+
 // Auth middleware
 export function requireAuth(req, res, next) {
   const token = req.cookies.token;
@@ -31,7 +47,6 @@ export function requireAuth(req, res, next) {
     return res.status(403).json({ error: "No token" });
   }
 
-  // const token = authHeader.split(" ")[1];
   try {
     const decoded = jwt.verify(token, SECRET);
     req.user = decoded.user;

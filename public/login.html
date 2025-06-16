@@ -1,29 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <link rel="stylesheet" href="main.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Timer Admin Login</title>
   <style>
-    .login-container {
-      max-width: fit-content;
-      margin-left:auto;
-      margin-right:auto;
-      font-size: 1rem;
+    :root {
+      --primary-color: #4a90e2;
+      --bg-color: #f5f7fa;
+      --text-color: #333;
+      --input-bg: #fff;
+      --border-radius: 8px;
+      --transition: 0.3s ease;
+      --error-color: #e74c3c;
     }
-    form input, form button, form a, form label{
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100dvh;
+      background-color: var(--bg-color);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow-x: hidden;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .login-container {
+      background: white;
+      padding: 2rem;
+      border-radius: var(--border-radius);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 1.5rem;
+      color: var(--text-color);
+    }
+
+    form {
       display: flex;
       flex-direction: column;
       gap: 1rem;
-      margin-top: 1rem;
-      padding:0.5rem;
-      width:200px;
     }
 
-    form input{
-      margin-top:0.5rem;
+    input[type="text"],
+    input[type="password"]
+    {
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: var(--border-radius);
+      background: var(--input-bg);
+      transition: border var(--transition);
+      width: 100%;
     }
-    
+
+    input:focus {
+      border-color: var(--primary-color);
+      outline: none;
+    }
+
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 0.75rem;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color var(--transition);
+    }
+
+    button:hover {
+      background-color: #357abd;
+    }
+
+    a {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--primary-color);
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+
+    a:hover {
+      color: #357abd;
+    }
+
+    .error-message {
+      color: var(--error-color);
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+      display: none;
+      text-align: left;
+    }
+
+     #changePasswordForm {
+      /* margin-top: 2rem; */
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      text-align: left;
+    } 
+
+    #changePasswordForm label {
+      font-size: 0.9rem;
+      color: #555;
+    }
   </style>
 </head>
 
@@ -31,24 +129,31 @@
   <div class="login-container">
     <h2>Timer Admin Login</h2>
     <form id="loginForm">
-      <input type="text" id="username" name="username" placeholder="Username" />
-      <input type="password" id="password" name="password" placeholder="Password" />
+      <input type="text" id="username" name="username" placeholder="Username" required/>
+      <input type="password" id="password" name="password" placeholder="Password" required/>
       <button type="submit">Login</button>
+      <div id="loginError" class="error-message"></div>
       <a href="#" onclick="showChangePasswordForm()">Change Password</a>
     </form>
-    
+
     <form id="changePasswordForm" style="display: none;">
-      <label>Current Password</label>
-      <input type="password" name="currentPassword" required />
-      <label>New Password</label>
-      <input type="password" name="newPassword" required />
-      <label>Confirm New Password</label>
-      <input type="password" name="newPasswordVerify" required />
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required />
+      
+      <label for="currentPassword">Current Password</label>
+      <input type="password" id="oldPassword" name="oldPassword" required />
+
+      <label for="newPassword">New Password</label>
+      <input type="password" id="newPassword" name="newPassword" required />
+
+      <label for="newPasswordVerify">Confirm New Password</label>
+      <input type="password" id="newPasswordVerify" name="newPasswordVerify" required />
+      <div id="changePasswordError" class="error-message"></div>
+
       <button type="submit">Change Password</button>
     </form>
-    
   </div>
-  
+
 
   <script>
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -66,19 +171,54 @@
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem('token', data.token);
         window.location.href = '/admin.html';
+        loginError.style.display = 'none';
       } else {
-        alert(data.error || 'Login failed');
+        const loginError = document.getElementById('loginError');
+        loginError.textContent = data.error || 'Login failed';
+        loginError.style.display = 'block';
       }
     });
 
     function showChangePasswordForm() {
-        const changePasswordForm = document.getElementById('changePasswordForm');
-        changePasswordForm.style.display = 'block';
-        const loginForm = document.getElementById('loginForm');
-        loginForm.style.display = 'none';
+      const changePasswordForm = document.getElementById('changePasswordForm');
+      changePasswordForm.style.display = 'flex';
+      const loginForm = document.getElementById('loginForm');
+      loginForm.style.display = 'none';
+    }
+
+    document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const username = form.username.value;
+      const oldPassword = form.oldPassword.value;
+      const newPassword = form.newPassword.value;
+      const newPasswordVerify = form.newPasswordVerify.value;
+
+      if(newPassword !== newPasswordVerify) {
+        const changePasswordError = document.getElementById('changePasswordError');
+        changePasswordError.textContent = 'New passwords do not match';
+        changePasswordError.style.display = 'block';
+        return;
       }
+
+      const res = await fetch('/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, oldPassword, newPassword })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        window.location.href = '/login.html';
+        changePasswordError.style.display =  'none';
+      } else {
+        const changePasswordError = document.getElementById('changePasswordError');
+        changePasswordError.textContent = data.error || 'Change password failed';
+        changePasswordError.style.display = 'block';
+      }
+    });
   </script>
 </body>
 
