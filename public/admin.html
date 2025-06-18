@@ -120,6 +120,11 @@
       pointer-events: none;
     }
 
+    .current-time-line {
+      border-top: 3px solid #0077cc;
+      z-index: 2;
+    }
+
     @media (min-width: 700px) {
       .day-tabs {
         display: none;
@@ -346,7 +351,7 @@
       const TIME_LINE_HEIGHT = 30;
       const TIME_LINE_OFFSET = 5;
 
-      daysToShow.forEach(day => {
+      daysToShow.forEach((day, idx) => {
         const dayWrapper = document.createElement('div');
         dayWrapper.className = 'day-wrapper';
 
@@ -360,6 +365,22 @@
           line.className = 'time-line';
           line.style.top = `${(h * TIME_LINE_HEIGHT) + TIME_LINE_HEIGHT + TIME_LINE_OFFSET}px`;
           dayWrapper.appendChild(line);
+        }
+
+        const now = new Date();
+        const startHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), START_HOUR, 0, 0);
+        const endHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        const isBetween = now >= startHour && now <= endHour;
+
+        if (isBetween && currentDayIndex === idx) {
+          const currentLine = document.createElement('div');
+          currentLine.classList.add('time-line');
+          currentLine.classList.add('current-time-line');
+          debugger;
+          const minutesSinceStart = (now.getHours() - START_HOUR) * 60 + now.getMinutes();
+          const topInPixels = (minutesSinceStart / 60) * HOUR_HEIGHT + (TIME_LINE_OFFSET + TIME_LINE_HEIGHT);
+          currentLine.style.top = `${topInPixels}px`;
+          dayWrapper.appendChild(currentLine);
         }
 
         dayWrapper.appendChild(dayColumn);
