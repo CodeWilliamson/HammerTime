@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 
 const db = new Database("./data/schedule.db");
-import bcrypt from 'bcryptjs';
+import bcrypt from "bcryptjs";
 
 // Initialize table if not exists
 db.exec(`
@@ -11,6 +11,17 @@ db.exec(`
     title TEXT NOT NULL,
     message TEXT,
     start_time TEXT NOT NULL,  -- e.g., "19:00"
+    duration_minutes INTEGER NOT NULL
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS draw_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,                -- ISO format "YYYY-MM-DD"
+    title TEXT NOT NULL,
+    message TEXT,
+    start_time TEXT NOT NULL,          -- "HH:mm"
     duration_minutes INTEGER NOT NULL
   );
 `);
@@ -29,14 +40,16 @@ db.exec(`
 const existingConfigCount = db.prepare(`SELECT COUNT(*) as count FROM timer_config`).get().count;
 
 if (existingConfigCount === 0) {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO timer_config (background_color, timer_color, status_color, message_color)
     VALUES (@background_color, @timer_color, @status_color, @message_color)
-  `).run({
-    background_color: '#111111',
-    timer_color: '#eeeeee',
-    status_color: '#eeeeee',
-    message_color: '#cccccc'
+  `
+  ).run({
+    background_color: "#111111",
+    timer_color: "#eeeeee",
+    status_color: "#eeeeee",
+    message_color: "#cccccc",
   });
 }
 
@@ -56,14 +69,22 @@ if (adminExists === 0) {
 
 export function getCurrentDraw() {
   const now = new Date();
-  const day = now.toLocaleDateString("en-CA", { weekday: "long" });
-
-  const stmt = db.prepare(`
-    SELECT * FROM draws
-    WHERE day_of_week = ?
-    ORDER BY start_time ASC
-  `);
-  const draws = stmt.all(day);
+  // Use local timezone for date string
+  const isoDate = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0');
+  const overrideStmt = db.prepare('SELECT * FROM draw_overrides WHERE date = ?');
+  let draws = overrideStmt.all(isoDate);
+  // if no override draws, get all recurring draws for today
+  if (draws.length === 0) {
+    const day = now.toLocaleDateString("en-CA", { weekday: "long" });
+    const stmt = db.prepare(`
+      SELECT * FROM draws
+      WHERE day_of_week = ?
+      ORDER BY start_time ASC
+    `);
+    draws = stmt.all(day);
+  }
 
   let lastEndedDraw = null;
   let nextDraw = null;
@@ -101,12 +122,25 @@ export function getConfig() {
 }
 
 export function addDraw(draw) {
-  const stmt = db.prepare(`
-    INSERT INTO draws (day_of_week, title, message, start_time, duration_minutes)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-  const result = stmt.run(draw.day_of_week, draw.title, draw.message, draw.start_time, draw.duration_minutes);
-  return result.lastInsertRowid;
+  if (draw.override_date) {
+    // Save as override for a specific date
+    const stmt = db.prepare(`
+      INSERT INTO draw_overrides (date, title, message, start_time, duration_minutes)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(draw.override_date, draw.title, draw.message, draw.start_time, draw.duration_minutes);
+    return { id: result.lastInsertRowid, override: true };
+  } else if (draw.day_of_week) {
+    // Save as recurring draw
+    const stmt = db.prepare(`
+      INSERT INTO draws (day_of_week, title, message, start_time, duration_minutes)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(draw.day_of_week, draw.title, draw.message, draw.start_time, draw.duration_minutes);
+    return { id: result.lastInsertRowid, override: false };
+  } else {
+    throw new Error('Draw must have either an override_date or day_of_week');
+  }
 }
 
 export function updateDraw(id, updates) {
@@ -126,8 +160,20 @@ export function updateDraw(id, updates) {
   return result.changes > 0;
 }
 
-export function deleteDraw(id) {
-  const stmt = db.prepare(`DELETE FROM draws WHERE id = ?`);
+export function deleteDraw(id, isOverride = false) {
+  if (isOverride) {
+    const stmt = db.prepare(`DELETE FROM draw_overrides WHERE id = ?`);
+    const result = stmt.run(id);
+    return result.changes > 0;
+  } else {
+    const stmt = db.prepare(`DELETE FROM draws WHERE id = ?`);
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+}
+
+export function deleteDrawOverride(id) {
+  const stmt = db.prepare(`DELETE FROM draw_overrides WHERE id = ?`);
   const result = stmt.run(id);
   return result.changes > 0;
 }
@@ -141,21 +187,42 @@ export function getAllDraws(dayOfWeek = null) {
     `);
     return stmt.all(dayOfWeek);
   } else {
-    const stmt = db.prepare(`
-      SELECT * FROM draws
-      ORDER BY
-        CASE day_of_week
-          WHEN 'Sunday' THEN 0
-          WHEN 'Monday' THEN 1
-          WHEN 'Tuesday' THEN 2
-          WHEN 'Wednesday' THEN 3
-          WHEN 'Thursday' THEN 4
-          WHEN 'Friday' THEN 5
-          WHEN 'Saturday' THEN 6
-        END,
-        start_time ASC
-    `);
-    return stmt.all();
+    // Get all draws for the current week, using overrides if present
+    const today = new Date();
+    // Find Sunday of this week
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const drawsForWeek = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      // Only consider overrides for today or future
+      const todayDate = new Date();
+      todayDate.setHours(0,0,0,0);
+      const thisDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      // Check for override only if date is today or in the future
+      let overrides = [];
+      if (thisDate >= todayDate) {
+        const overrideStmt = db.prepare('SELECT * FROM draw_overrides WHERE date = ? ORDER BY start_time ASC');
+        overrides = overrideStmt.all(dateStr);
+      }
+      if (overrides.length > 0) {
+        // Use all overrides for this date
+        overrides.forEach(o => drawsForWeek.push({ ...o, date: dateStr, isOverride: true }));
+      } else {
+        // Use recurring draws for this day of week
+        const dayOfWeekStr = d.toLocaleDateString('en-CA', { weekday: 'long' });
+        const stmt = db.prepare(`
+          SELECT * FROM draws
+          WHERE day_of_week = ?
+          ORDER BY start_time ASC
+        `);
+        const recurs = stmt.all(dayOfWeekStr);
+        recurs.forEach(r => drawsForWeek.push({ ...r, day_of_week: dayOfWeekStr, date: dateStr, isOverride: false }));
+      }
+    }
+    return drawsForWeek;
   }
 }
 
@@ -173,5 +240,22 @@ export function updatePassword(username, newPassword) {
   const hash = bcrypt.hashSync(newPassword, 10);
   const stmt = db.prepare(`UPDATE users SET password_hash = ? WHERE username = ?`);
   const result = stmt.run(hash, username.toLowerCase());
+  return result.changes > 0;
+}
+
+export function updateDrawOverride(id, updates) {
+  const stmt = db.prepare(`
+    UPDATE draw_overrides
+    SET date = ?, title = ?, message = ?, start_time = ?, duration_minutes = ?
+    WHERE id = ?
+  `);
+  const result = stmt.run(
+    updates.override_date || updates.date, // allow either field name
+    updates.title,
+    updates.message,
+    updates.start_time,
+    updates.duration_minutes,
+    id
+  );
   return result.changes > 0;
 }

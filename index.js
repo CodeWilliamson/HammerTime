@@ -1,5 +1,5 @@
 import express from "express";
-import { getCurrentDraw, getConfig, getAllDraws, getDrawById, addDraw, updateDraw, deleteDraw } from "./db.js";
+import { getCurrentDraw, getConfig, getAllDraws, getDrawById, addDraw, updateDraw, deleteDraw, deleteDrawOverride, updateDrawOverride } from "./db.js";
 import authRouter, { requireAuth } from "./auth.js";
 import cookieParser from "cookie-parser";
 
@@ -141,7 +141,34 @@ app.put("/api/draws/:id", requireAuth, (req, res) => {
 
 app.delete("/api/draws/:id", requireAuth, (req, res) => {
   try {
-    deleteDraw(req.params.id);
+    const deleted = deleteDraw(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Draw not found' });
+    }
+    res.status(204).end();
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.delete("/api/draw-overrides/:id", requireAuth, (req, res) => {
+  try {
+    const deleted = deleteDrawOverride(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Override draw not found' });
+    }
+    res.status(204).end();
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.put("/api/draw-overrides/:id", requireAuth, (req, res) => {
+  try {
+    const updated = updateDrawOverride(req.params.id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Override draw not found' });
+    }
     res.status(204).end();
   } catch (e) {
     res.status(400).json({ error: e.message });

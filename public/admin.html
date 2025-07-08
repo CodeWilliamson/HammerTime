@@ -68,8 +68,9 @@
     }
 
     .day-label {
-      height: 35px;
+      height: 45px;
       margin: 0px;
+      padding: 5px
     }
 
     .time-slot.filled {
@@ -85,7 +86,7 @@
       flex-direction: column;
       align-items: flex-end;
       margin-right: 8px;
-      margin-top: 35px;
+      margin-top: 55px;
     }
 
     .draw-card-abs {
@@ -232,6 +233,35 @@
     .close-x:hover {
       color: #000;
     }
+
+    .overridden-day-label {
+      background: #ffeaea;
+      border-radius: 6px;
+      color: #b00;
+    }
+
+    .draw-type-btn {
+      flex: 1;
+      padding: 0.5em 1em;
+      border: 1px solid #0077cc;
+      background: #f5faff;
+      color: #0077cc;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .draw-type-btn.active {
+      background: #0077cc;
+      color: #fff;
+    }
+
+    .draw-type-btn.disabled {
+      opacity: 0.5;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 
@@ -257,17 +287,31 @@
       <h3 id="formTitle">Add Draw</h3>
       <form id="drawForm">
         <input type="hidden" name="id" />
-        <label>Day of Week</label>
-        <select name="day_of_week" required>
-          <option value="">Select</option>
-          <option value="Sunday">Sunday</option>
-          <option value="Monday">Monday</option>
-          <option value="Tuesday">Tuesday</option>
-          <option value="Wednesday">Wednesday</option>
-          <option value="Thursday">Thursday</option>
-          <option value="Friday">Friday</option>
-          <option value="Saturday">Saturday</option>
-        </select>
+        <div id="drawTypeSwitch" style="display: flex; gap: 8px; margin-bottom: 1em;">
+          <button type="button" id="weeklyBtn" class="draw-type-btn active" onclick="setDrawOverride(false)">Weekly Draw
+          </button>
+          <button type="button" id="dateBtn" class="draw-type-btn" onclick="setDrawOverride(true)">Date Specific Draw
+          </button>
+          <input type="hidden" name="is_override" id="isOverrideHidden" value="false" />
+        </div>
+
+        <div id="overrideDateContainer" style="display: none;">
+          <label>Override Date (YYYY-MM-DD)</label>
+          <input name="override_date" type="date" />
+        </div>
+        <div id="dayOfWeekContainer">
+          <label>Day of Week</label>
+          <select name="day_of_week" required>
+            <option value="">Select</option>
+            <option value="Sunday">Sunday</option>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+          </select>
+        </div>
         <label>Title</label>
         <input name="title" required />
         <label>Message</label>
@@ -302,9 +346,11 @@
     }
 
     function groupByDay(draws) {
+      // Group by date (YYYY-MM-DD) for week view
       return draws.reduce((acc, draw) => {
-        if (!acc[draw.day_of_week]) acc[draw.day_of_week] = [];
-        acc[draw.day_of_week].push(draw);
+        const key = draw.date || draw.day_of_week;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(draw);
         return acc;
       }, {});
     }
@@ -344,20 +390,37 @@
       }
 
       const isMobile = window.innerWidth < 700;
-      const daysToShow = isMobile ? [daysOfWeek[currentDayIndex]] : daysOfWeek;
+      // For week view, get all dates in the current week
+      const today = new Date();
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay());
+      const daysToShow = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart);
+        d.setDate(weekStart.getDate() + i);
+        const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        daysToShow.push({
+          label: daysOfWeek[d.getDay()],
+          date: dateStr
+        });
+      }
+      const daysToRender = isMobile ? [daysToShow[currentDayIndex]] : daysToShow;
 
       const HOUR_HEIGHT = 60; // 60px per hour = 1px per minute
       const START_HOUR = 8;
       const TIME_LINE_HEIGHT = 30;
-      const TIME_LINE_OFFSET = 5;
+      const TIME_LINE_OFFSET = 25;
 
-      daysToShow.forEach((day, idx) => {
+      daysToRender.forEach((dayObj, idx) => {
         const dayWrapper = document.createElement('div');
         dayWrapper.className = 'day-wrapper';
 
+        const draws = (grouped[dayObj.date] || []).slice().sort((a, b) => a.start_time.localeCompare(b.start_time));
+        const isOverridden = draws.some(draw => draw.isOverride);
+
         const dayColumn = document.createElement('div');
         dayColumn.className = 'day-column';
-        dayWrapper.innerHTML = `<h3 class="day-label">${day}</h3>`;
+        dayWrapper.innerHTML = `<h3 class="day-label${isOverridden ? ' overridden-day-label' : ''}">${dayObj.label}<br><span style='font-size:0.8em;color:#888;'>${dayObj.date}${isOverridden ? ' <span style=\'color:#d00;font-size:0.9em;\'>(Override Day)</span>' : ''}</span></h3>`;
 
         // Generate time lines
         for (let h = 1; h <= 31; h++) {
@@ -376,7 +439,6 @@
           const currentLine = document.createElement('div');
           currentLine.classList.add('time-line');
           currentLine.classList.add('current-time-line');
-          debugger;
           const minutesSinceStart = (now.getHours() - START_HOUR) * 60 + now.getMinutes();
           const topInPixels = (minutesSinceStart / 60) * HOUR_HEIGHT + (TIME_LINE_OFFSET + TIME_LINE_HEIGHT);
           currentLine.style.top = `${topInPixels}px`;
@@ -384,8 +446,7 @@
         }
 
         dayWrapper.appendChild(dayColumn);
-        const draws = (grouped[day] || []).slice().sort((a, b) => a.start_time.localeCompare(b.start_time));
-
+        // Use date string as key for grouping
         draws.forEach(draw => {
           const [hourStr, minStr] = draw.start_time.split(':');
           const startMinutes = (parseInt(hourStr) * HOUR_HEIGHT + parseInt(minStr)) - START_HOUR * 60;
@@ -397,7 +458,7 @@
           div.style.top = `${top}px`;
           div.style.height = `${height}px`;
           div.innerHTML = `
-        <strong>${draw.title}</strong>
+        <strong>${draw.title}${draw.isOverride ? ' <span style=\'color:#d00;font-size:0.8em;\'>(Override)</span>' : ''}</strong>
         <span>${draw.start_time} (${draw.duration_minutes} min)</span>
         ${draw.message ? `<span>${draw.message}</span>` : ''}
       `;
@@ -417,10 +478,21 @@
       form.reset();
       form.id.value = draw?.id || '';
       form.day_of_week.value = draw?.day_of_week || '';
+      form.override_date.value = draw?.date;
       form.title.value = draw?.title || '';
       form.message.value = draw?.message || '';
       form.start_time.value = draw?.start_time || '';
       form.duration_minutes.value = draw?.duration_minutes || '';
+      // Set draw type switch
+      setDrawOverride(!!draw?.isOverride);
+      if (draw?.override_date) {
+        form.override_date.value = draw.override_date;
+      }
+      // Disable draw type switch if editing
+      document.getElementById('weeklyBtn').disabled = !!draw;
+      document.getElementById('dateBtn').disabled = !!draw;
+      document.getElementById('weeklyBtn').classList.toggle('disabled', !!draw);
+      document.getElementById('dateBtn').classList.toggle('disabled', !!draw);
       modal.classList.add('active');
     }
 
@@ -432,7 +504,10 @@
       if (confirm("Are you sure you want to delete this draw?")) {
         const form = document.getElementById('drawForm');
         const id = form.id.value;
-        const res = await fetch(`/api/draws/${id}`, {
+        // Determine if this is an override draw
+        const isOverride = form.day_of_week.style.display === 'none' || form.day_of_week.value === '';
+        const endpoint = isOverride ? `/api/draw-overrides/${id}` : `/api/draws/${id}`;
+        const res = await fetch(endpoint, {
           method: 'DELETE', credentials: 'include'
         });
         if (!res.ok) {
@@ -443,10 +518,24 @@
       }
     }
 
+    function setDrawOverride(isOverride) {
+      document.getElementById('isOverrideHidden').value = isOverride ? 'true' : 'false';
+      document.getElementById('overrideDateContainer').style.display = isOverride ? 'block' : 'none';
+      document.getElementById('dayOfWeekContainer').style.display = isOverride ? 'none' : 'block';
+      document.getElementById('weeklyBtn').classList.toggle('active', !isOverride);
+      document.getElementById('dateBtn').classList.toggle('active', isOverride);
+      // Set required attributes
+      document.querySelector('[name="override_date"]').required = isOverride;
+      document.querySelector('[name="day_of_week"]').required = !isOverride;
+    }
+
     document.getElementById('drawForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target;
+      const overrideDate = form.override_date.value;
+      const isOverride = document.getElementById('isOverrideHidden').value === 'true';
       const data = {
+        ...(overrideDate ? { override_date: overrideDate } : { day_of_week: form.day_of_week.value }),
         day_of_week: form.day_of_week.value,
         title: form.title.value,
         message: form.message.value,
@@ -455,7 +544,9 @@
       };
 
       if (form.id.value) {
-        await fetch(`/api/draws/${form.id.value}`, {
+        // Use correct endpoint for edit based on draw type
+        const endpoint = isOverride ? `/api/draw-overrides/${form.id.value}` : `/api/draws/${form.id.value}`;
+        await fetch(endpoint, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
