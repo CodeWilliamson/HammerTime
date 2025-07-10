@@ -138,14 +138,16 @@
 
     .add-btn {
       position: fixed;
-      bottom: 1.5rem;
+      top: 1.5rem;
       right: 1.5rem;
       background: #0077cc;
       color: white;
       border: none;
-      padding: 0.75rem 1rem;
+      width: 3rem;
+      height: 3rem;
+      /* padding: 0.75rem 1rem; */
       border-radius: 50%;
-      font-size: 1.5rem;
+      font-size: 2.5rem;
       cursor: pointer;
       z-index: 2;
     }
@@ -262,6 +264,31 @@
       pointer-events: none;
       cursor: not-allowed;
     }
+
+    #futureOverridesContainer {
+      margin: 2em 0;
+      display: none;
+    }
+
+    #futureOverridesSelect {
+      width: 100%;
+      max-width: 400px;
+      margin: 0.5em 0;
+      padding: 0.5em 1em;
+      border: 1px solid #0077cc;
+      border-radius: 6px;
+      font-size: 1rem;
+      background: #f5faff;
+      color: #222;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+
+    #futureOverridesSelect:focus {
+      border: 1.5px solid #0077cc;
+      outline: none;
+      box-shadow: 0 2px 8px rgba(0, 119, 204, 0.08);
+    }
   </style>
 </head>
 
@@ -275,6 +302,13 @@
       <div class="calendar-grid">
         <!-- Lines and columns go here -->
       </div>
+    </div>
+
+    <div id="futureOverridesContainer" style="margin:2em 0; display:none;">
+      <h3>Future Date-Specific Draw Overrides</h3>
+      <select id="futureOverridesSelect" style="width:100%;" size="1">
+        <option value="">-- Select a future override to edit --</option>
+      </select>
     </div>
 
     <button class="add-btn" onclick="openForm()">+</button>
@@ -339,10 +373,14 @@
         window.location.href = '/login.html';
         return;
       }
-      const draws = await res.json();
+      const result = await res.json();
+      // result: { drawsForWeek, futureOverrides }
+      const draws = result.drawsForWeek || result; // fallback for legacy
       const grouped = groupByDay(draws);
       renderTabs();
       renderCalendar(grouped);
+      window._lastFutureOverrides = result.futureOverrides || [];
+      renderFutureOverrides(window._lastFutureOverrides);
     }
 
     function groupByDay(draws) {
@@ -470,6 +508,35 @@
       });
     }
 
+    function renderFutureOverrides(futureOverrides) {
+      const container = document.getElementById('futureOverridesContainer');
+      const select = document.getElementById('futureOverridesSelect');
+      // Clear previous options except the default
+      select.innerHTML = '<option value="">-- Select a future override to edit --</option>';
+      if (futureOverrides && futureOverrides.length > 0) {
+        container.style.display = 'block';
+        futureOverrides.forEach(draw => {
+          const option = document.createElement('option');
+          option.value = draw.id;
+          option.textContent = `${draw.date} - ${draw.title} (${draw.start_time}, ${draw.duration_minutes} min)`;
+          select.appendChild(option);
+        });
+      } else {
+        container.style.display = 'none';
+      }
+      select.onchange = () => {
+        const selected = futureOverrides.find(d => d.id == select.value);
+        if (selected) openForm(selected);
+        select.value = '';
+      };
+    }
+
+    // Helper to open the form for a future override by id
+    function openFormOverride(id) {
+      if (!window._lastFutureOverrides) return;
+      const draw = window._lastFutureOverrides.find(d => d.id == id);
+      if (draw) openForm(draw);
+    }
 
     function openForm(draw = null) {
       const modal = document.getElementById('formModal');

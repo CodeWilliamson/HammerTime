@@ -187,42 +187,49 @@ export function getAllDraws(dayOfWeek = null) {
     `);
     return stmt.all(dayOfWeek);
   } else {
-    // Get all draws for the current week, using overrides if present
+    // Get all draw_overrides for today and future in one query
     const today = new Date();
-    // Find Sunday of this week
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    const overrideStmt = db.prepare('SELECT * FROM draw_overrides WHERE date >= ? ORDER BY date ASC, start_time ASC');
+    const allOverrides = overrideStmt.all(todayStr);
+    // Map: date string -> array of overrides
+    const overridesByDate = {};
+    for (const o of allOverrides) {
+      if (!overridesByDate[o.date]) overridesByDate[o.date] = [];
+      overridesByDate[o.date].push(o);
+    }
+    // Get all recurring draws
+    const drawsStmt = db.prepare('SELECT * FROM draws ORDER BY day_of_week ASC, start_time ASC');
+    const allDraws = drawsStmt.all();
+    // Build week view
+    const drawsForWeek = [];
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay());
-    const drawsForWeek = [];
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    // Collect overrides for this week only
     for (let i = 0; i < 7; i++) {
       const d = new Date(weekStart);
       d.setDate(weekStart.getDate() + i);
       const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-      // Only consider overrides for today or future
-      const todayDate = new Date();
-      todayDate.setHours(0,0,0,0);
-      const thisDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      // Check for override only if date is today or in the future
-      let overrides = [];
-      if (thisDate >= todayDate) {
-        const overrideStmt = db.prepare('SELECT * FROM draw_overrides WHERE date = ? ORDER BY start_time ASC');
-        overrides = overrideStmt.all(dateStr);
-      }
-      if (overrides.length > 0) {
-        // Use all overrides for this date
-        overrides.forEach(o => drawsForWeek.push({ ...o, date: dateStr, isOverride: true }));
+      // Fix: Use the date string as returned by SQLite (zero-padded month and day)
+      if (overridesByDate[dateStr] && overridesByDate[dateStr].length > 0) {
+        overridesByDate[dateStr].forEach(o => drawsForWeek.push({ ...o, date: o.date, isOverride: true }));
       } else {
         // Use recurring draws for this day of week
         const dayOfWeekStr = d.toLocaleDateString('en-CA', { weekday: 'long' });
-        const stmt = db.prepare(`
-          SELECT * FROM draws
-          WHERE day_of_week = ?
-          ORDER BY start_time ASC
-        `);
-        const recurs = stmt.all(dayOfWeekStr);
-        recurs.forEach(r => drawsForWeek.push({ ...r, day_of_week: dayOfWeekStr, date: dateStr, isOverride: false }));
+        allDraws.filter(r => r.day_of_week === dayOfWeekStr).forEach(r => drawsForWeek.push({ ...r, day_of_week: dayOfWeekStr, date: dateStr, isOverride: false }));
       }
     }
-    return drawsForWeek;
+    // Collect future overrides (after this week)
+    const futureOverrides = allOverrides.filter(o => {
+      // Compare using only the date part (ignore time zone issues)
+      const oDate = new Date(o.date + 'T00:00:00');
+      const weekEndDate = new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate());
+      return oDate > weekEndDate;
+    }).map(o => ({ ...o, isOverride: true }));
+    return { drawsForWeek, futureOverrides };
   }
 }
 
