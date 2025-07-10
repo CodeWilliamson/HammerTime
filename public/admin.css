@@ -1,292 +1,296 @@
 .calendar-container {
-      padding: 1rem;
-      position: relative;
-    }
+  padding: 1rem;
+  position: relative;
+}
 
-    .day-tabs {
-      display: flex;
-      justify-content: space-around;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-    }
+.day-tabs {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
 
-    .day-tabs button {
-      flex: 1;
-      margin: 4px;
-      padding: 0.5rem;
-      border: none;
-      background-color: #ddd;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-    }
+.day-tabs button {
+  flex: 1;
+  margin: 4px;
+  padding: 0.5rem;
+  border: none;
+  background-color: #ddd;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+}
 
-    .day-tabs button.active {
-      background-color: #333;
-      color: #fff;
-    }
+.day-tabs button.active {
+  background-color: #333;
+  color: #fff;
+}
 
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1rem;
-      flex-grow: 1;
-    }
+.calendar-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  flex-grow: 1;
+}
 
-    .time-slot {
-      flex: 1;
-      border-top: 1px solid #eee;
-      padding: 0.25rem;
-      position: relative;
-      font-size: 0.8rem;
-      min-height: 30px;
-    }
+.time-slot {
+  flex: 1;
+  border-top: 1px solid #eee;
+  padding: 0.25rem;
+  position: relative;
+  font-size: 0.8rem;
+  min-height: 30px;
+}
 
-    .day-wrapper {
-      position: relative;
-      flex: 1;
-    }
+.day-wrapper {
+  position: relative;
+  flex: 1;
+}
 
-    .day-column {
-      position: relative;
-      height: 960px;
-      /* 16 hours * 60px */
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      overflow: hidden;
-    }
+.day-column {
+  position: relative;
+  height: 960px;
+  /* 16 hours * 60px */
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  overflow: hidden;
+}
 
-    .day-label {
-      height: 45px;
-      margin: 0px;
-      padding: 5px
-    }
+.day-label {
+  height: 45px;
+  margin: 0px;
+  padding: 5px;
+}
 
-    .time-slot.filled {
-      background-color: #e1f0ff;
-      border-left: 4px solid #0077cc;
-      font-weight: bold;
-      cursor: pointer;
-    }
+.time-slot.filled {
+  background-color: #e1f0ff;
+  border-left: 4px solid #0077cc;
+  font-weight: bold;
+  cursor: pointer;
+}
 
-    .time-labels {
-      width: 50px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      margin-right: 8px;
-      margin-top: 55px;
-    }
+.time-labels {
+  width: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 8px;
+  margin-top: 55px;
+}
 
-    .draw-card-abs {
-      position: absolute;
-      left: 0;
-      right: 0;
-      margin-left: 5px;
-      margin-right: 5px;
-      background: #e1f0ff;
-      border-left: 4px solid #0077cc;
-      border-top: 1px solid #dfdfdf;
-      border-bottom: 1px solid #dfdfdf;
-      border-right: 1px solid #dfdfdf;
-      padding: 4px;
-      font-size: 0.8rem;
-      border-radius: 4px;
-      box-sizing: border-box;
-      cursor: pointer;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+.draw-card-abs {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin-left: 5px;
+  margin-right: 5px;
+  background: #e1f0ff;
+  border-left: 4px solid #0077cc;
+  border-top: 1px solid #dfdfdf;
+  border-bottom: 1px solid #dfdfdf;
+  border-right: 1px solid #dfdfdf;
+  padding: 4px;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  box-sizing: border-box;
+  cursor: pointer;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-    .time-line {
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 0;
-      border-top: 1px dashed #ccc;
-      z-index: 1;
-      pointer-events: none;
-    }
+.time-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed #ccc;
+  z-index: 1;
+  pointer-events: none;
+}
 
-    .current-time-line {
-      border-top: 3px solid #0077cc;
-      z-index: 2;
-    }
+.current-time-line {
+  border-top: 3px solid #0077cc;
+  z-index: 2;
+}
 
-    @media (min-width: 700px) {
-      .day-tabs {
-        display: none;
-      }
+@media (min-width: 700px) {
+  .day-tabs {
+    display: none;
+  }
 
-      .calendar-grid {
-        grid-template-columns: repeat(7, 1fr);
-      }
-    }
+  .calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
 
-    .add-btn {
-      position: fixed;
-      top: 1.5rem;
-      right: 1.5rem;
-      background: #0077cc;
-      color: white;
-      border: none;
-      width: 3rem;
-      height: 3rem;
-      /* padding: 0.75rem 1rem; */
-      border-radius: 50%;
-      font-size: 2.5rem;
-      cursor: pointer;
-      z-index: 2;
-    }
+.add-btn {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: #0077cc;
+  border: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: #fff;
+  padding: 0;
+  font-family: Arial;
+}
 
-    /* Modal styles */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
+/* Modal styles */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
 
-    .modal.active {
-      display: flex;
-    }
+.modal.active {
+  display: flex;
+}
 
-    .modal-content {
-      position: relative;
-      background: white;
-      padding: 1.5rem;
-      border-radius: 6px;
-      width: 90%;
-      max-width: 400px;
-    }
+.modal-content {
+  position: relative;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 6px;
+  width: 90%;
+  max-width: 400px;
+}
 
-    .modal-content h3 {
-      margin-top: 0;
-    }
+.modal-content h3 {
+  margin-top: 0;
+}
 
-    .modal-content form {
-      display: flex;
-      flex-direction: column;
-    }
+.modal-content form {
+  display: flex;
+  flex-direction: column;
+}
 
-    .modal-content label {
-      margin-top: 0.5rem;
-    }
+.modal-content label {
+  margin-top: 0.5rem;
+}
 
-    .modal-content input,
-    .modal-content textarea,
-    .modal-content select {
-      padding: 0.5rem;
-      font-size: 1rem;
-    }
+.modal-content input,
+.modal-content textarea,
+.modal-content select {
+  padding: 0.5rem;
+  font-size: 1rem;
+}
 
-    .modal-content button {
-      margin-top: 1rem;
-      padding: 0.6rem;
-      font-size: 1rem;
-      cursor: pointer;
-      border-radius: 6px;
-    }
+.modal-content button {
+  margin-top: 1rem;
+  padding: 0.6rem;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 6px;
+}
 
-    .close-btn {
-      background: #ccc;
-    }
+.close-btn {
+  background: #ccc;
+}
 
-    .save-btn {
-      background: #0077cc;
-      color: white;
-    }
+.save-btn {
+  background: #0077cc;
+  color: white;
+}
 
-    .delete-btn {
-      background: #ff6262;
-      color: white;
-    }
+.delete-btn {
+  background: #ff6262;
+  color: white;
+}
 
-    .close-x {
-      position: absolute;
-      top: 10px;
-      right: 15px;
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: #555;
-      cursor: pointer;
-      user-select: none;
-    }
+.close-x {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+}
 
-    .close-x:hover {
-      color: #000;
-    }
+.close-x:hover {
+  color: #000;
+}
 
-    .overridden-day-label {
-      background: #ffeaea;
-      border-radius: 6px;
-      color: #b00;
-    }
+.overridden-day-label {
+  background: #ffeaea;
+  border-radius: 6px;
+  color: #b00;
+}
 
-    .draw-type-btn {
-      flex: 1;
-      padding: 0.5em 1em;
-      border: 1px solid #0077cc;
-      background: #f5faff;
-      color: #0077cc;
-      font-weight: bold;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background 0.2s, color 0.2s;
-    }
+.draw-type-btn {
+  flex: 1;
+  padding: 0.5em 1em;
+  border: 1px solid #0077cc;
+  background: #f5faff;
+  color: #0077cc;
+  font-weight: bold;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
 
-    .draw-type-btn.active {
-      background: #0077cc;
-      color: #fff;
-    }
+.draw-type-btn.active {
+  background: #0077cc;
+  color: #fff;
+}
 
-    .draw-type-btn.disabled {
-      opacity: 0.5;
-      pointer-events: none;
-      cursor: not-allowed;
-    }
+.draw-type-btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
 
-    #futureOverridesContainer {
-      margin: 2em 0;
-      display: none;
-    }
+#futureOverridesContainer {
+  margin: 2em 0;
+  display: none;
+}
 
-    #futureOverridesSelect {
-      width: 100%;
-      max-width: 400px;
-      margin: 0.5em 0;
-      padding: 0.5em 1em;
-      border: 1px solid #0077cc;
-      border-radius: 6px;
-      font-size: 1rem;
-      background: #f5faff;
-      color: #222;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-      transition: border 0.2s, box-shadow 0.2s;
-    }
+#futureOverridesSelect {
+  width: 100%;
+  max-width: 400px;
+  margin: 0.5em 0;
+  padding: 0.5em 1em;
+  border: 1px solid #0077cc;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: #f5faff;
+  color: #222;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: border 0.2s, box-shadow 0.2s;
+}
 
-    #futureOverridesSelect:focus {
-      border: 1.5px solid #0077cc;
-      outline: none;
-      box-shadow: 0 2px 8px rgba(0, 119, 204, 0.08);
-    }
+#futureOverridesSelect:focus {
+  border: 1.5px solid #0077cc;
+  outline: none;
+  box-shadow: 0 2px 8px rgba(0, 119, 204, 0.08);
+}
 
-    .overridden-day-btn.active {
-      background: #b00 !important;
-      color: #ffeaea !important;
-    }
+.overridden-day-btn.active {
+  background: #b00 !important;
+  color: #ffeaea !important;
+}
 
-    .overridden-day-btn {
-      background: #ffeaea !important;
-      color: #b00 !important;
-      border-radius: 6px;
-    }
+.overridden-day-btn {
+  background: #ffeaea !important;
+  color: #b00 !important;
+  border-radius: 6px;
+}

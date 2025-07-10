@@ -178,15 +178,7 @@ export function deleteDrawOverride(id) {
   return result.changes > 0;
 }
 
-export function getAllDraws(dayOfWeek = null) {
-  if (dayOfWeek) {
-    const stmt = db.prepare(`
-      SELECT * FROM draws
-      WHERE day_of_week = ?
-      ORDER BY start_time ASC
-    `);
-    return stmt.all(dayOfWeek);
-  } else {
+export function getAllDraws() {
     // Get all draw_overrides for today and future in one query
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -197,7 +189,7 @@ export function getAllDraws(dayOfWeek = null) {
     const overridesByDate = {};
     for (const o of allOverrides) {
       if (!overridesByDate[o.date]) overridesByDate[o.date] = [];
-      overridesByDate[o.date].push(o);
+      overridesByDate[o.date].push({...o, is_override: true});
     }
     // Get all recurring draws
     const drawsStmt = db.prepare('SELECT * FROM draws ORDER BY day_of_week ASC, start_time ASC');
@@ -215,11 +207,11 @@ export function getAllDraws(dayOfWeek = null) {
       const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
       // Fix: Use the date string as returned by SQLite (zero-padded month and day)
       if (overridesByDate[dateStr] && overridesByDate[dateStr].length > 0) {
-        overridesByDate[dateStr].forEach(o => drawsForWeek.push({ ...o, date: o.date, isOverride: true }));
+        overridesByDate[dateStr].forEach(o => drawsForWeek.push({ ...o, date: o.date }));
       } else {
         // Use recurring draws for this day of week
         const dayOfWeekStr = d.toLocaleDateString('en-CA', { weekday: 'long' });
-        allDraws.filter(r => r.day_of_week === dayOfWeekStr).forEach(r => drawsForWeek.push({ ...r, day_of_week: dayOfWeekStr, date: dateStr, isOverride: false }));
+        allDraws.filter(r => r.day_of_week === dayOfWeekStr).forEach(r => drawsForWeek.push({ ...r, day_of_week: dayOfWeekStr, date: dateStr }));
       }
     }
     // Collect future overrides (after this week)
@@ -228,9 +220,8 @@ export function getAllDraws(dayOfWeek = null) {
       const oDate = new Date(o.date + 'T00:00:00');
       const weekEndDate = new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate());
       return oDate > weekEndDate;
-    }).map(o => ({ ...o, isOverride: true }));
+    }).map(o => ({ ...o, is_override: true }));
     return { drawsForWeek, futureOverrides };
-  }
 }
 
 export function getDrawById(id) {

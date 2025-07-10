@@ -47,7 +47,6 @@
           </button>
           <button type="button" id="dateBtn" class="draw-type-btn" onclick="setDrawOverride(true)">Date Specific Draw
           </button>
-          <input type="hidden" name="is_override" id="isOverrideHidden" value="false" />
         </div>
 
         <div id="overrideDateContainer" style="display: none;">
@@ -120,7 +119,7 @@
       const daysToShow = getCurrentWeekDays();
       daysToShow.forEach((dayObj, idx) => {
         const draws = (grouped[dayObj.date] || []).slice().sort((a, b) => a.start_time.localeCompare(b.start_time));
-        const isOverridden = draws.some(draw => draw.isOverride);
+        const isOverridden = draws.some(draw => draw.is_override);
         const btn = document.createElement('button');
         btn.textContent = dayObj.label;
         // btn.className = (idx === currentDayIndex) ? 'active' : '';
@@ -175,7 +174,7 @@
         dayWrapper.className = 'day-wrapper';
 
         const draws = (grouped[dayObj.date] || []).slice().sort((a, b) => a.start_time.localeCompare(b.start_time));
-        const isOverridden = draws.some(draw => draw.isOverride);
+        const isOverridden = draws.some(draw => draw.is_override);
 
         const dayColumn = document.createElement('div');
         dayColumn.className = 'day-column';
@@ -217,7 +216,7 @@
           div.style.top = `${top}px`;
           div.style.height = `${height}px`;
           div.innerHTML = `
-        <strong>${draw.title}${draw.isOverride ? ' <span style=\'color:#d00;font-size:0.8em;\'>(Override)</span>' : ''}</strong>
+        <strong>${draw.title}${draw.is_override ? ' <span style=\'color:#d00;font-size:0.8em;\'>(Override)</span>' : ''}</strong>
         <span>${draw.start_time} (${draw.duration_minutes} min)</span>
         ${draw.message ? `<span>${draw.message}</span>` : ''}
       `;
@@ -272,9 +271,9 @@
       form.start_time.value = draw?.start_time || '';
       form.duration_minutes.value = draw?.duration_minutes || '';
       // Set draw type switch
-      setDrawOverride(!!draw?.isOverride);
-      if (draw?.override_date) {
-        form.override_date.value = draw.override_date;
+      setDrawOverride(!!draw?.is_override);
+      if (draw?.date) {
+        form.override_date.value = draw.date;
       }
       // Disable draw type switch if editing
       document.getElementById('weeklyBtn').disabled = !!draw;
@@ -307,7 +306,6 @@
     }
 
     function setDrawOverride(isOverride) {
-      document.getElementById('isOverrideHidden').value = isOverride ? 'true' : 'false';
       document.getElementById('overrideDateContainer').style.display = isOverride ? 'block' : 'none';
       document.getElementById('dayOfWeekContainer').style.display = isOverride ? 'none' : 'block';
       document.getElementById('weeklyBtn').classList.toggle('active', !isOverride);
@@ -315,13 +313,15 @@
       // Set required attributes
       document.querySelector('[name="override_date"]').required = isOverride;
       document.querySelector('[name="day_of_week"]').required = !isOverride;
+      if(!isOverride) {
+        document.querySelector('[name="override_date"]').value = '';
+      }
     }
 
     document.getElementById('drawForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target;
       const overrideDate = form.override_date.value;
-      const isOverride = document.getElementById('isOverrideHidden').value === 'true';
       const data = {
         ...(overrideDate ? { override_date: overrideDate } : { day_of_week: form.day_of_week.value }),
         day_of_week: form.day_of_week.value,
@@ -333,7 +333,7 @@
 
       if (form.id.value) {
         // Use correct endpoint for edit based on draw type
-        const endpoint = isOverride ? `/api/draw-overrides/${form.id.value}` : `/api/draws/${form.id.value}`;
+        const endpoint = overrideDate ? `/api/draw-overrides/${form.id.value}` : `/api/draws/${form.id.value}`;
         await fetch(endpoint, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
