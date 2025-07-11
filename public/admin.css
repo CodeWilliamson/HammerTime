@@ -294,3 +294,9 @@
   color: #b00 !important;
   border-radius: 6px;
 }
+
+.faded-draw {
+  opacity: 0.4;
+  filter: grayscale(0.7);
+  pointer-events: none;
+}

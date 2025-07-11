@@ -71,7 +71,7 @@
         <label>Message</label>
         <textarea name="message"></textarea>
         <label>Start Time (HH:MM)</label>
-        <input name="start_time" required />
+        <input name="start_time" required pattern="^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$" maxlength="5" inputmode="numeric" placeholder="HH:MM" />
         <label>Duration (minutes)</label>
         <input name="duration_minutes" type="number" required />
         <button type="submit" class="save-btn">Save</button>
@@ -176,9 +176,17 @@
         const draws = (grouped[dayObj.date] || []).slice().sort((a, b) => a.start_time.localeCompare(b.start_time));
         const isOverridden = draws.some(draw => draw.is_override);
 
+        // Find all override time ranges for this day
+        const overrideRanges = draws.filter(draw => draw.is_override).map(draw => {
+          const [h, m] = draw.start_time.split(":").map(Number);
+          const start = h * 60 + m;
+          const end = start + draw.duration_minutes;
+          return { start, end };
+        });
+
         const dayColumn = document.createElement('div');
         dayColumn.className = 'day-column';
-        dayWrapper.innerHTML = `<h3 class="day-label${isOverridden ? ' overridden-day-label' : ''}">${dayObj.label}<br><span style='font-size:0.8em;color:#888;'>${dayObj.date}${isOverridden ? ' <span style=\'color:#d00;font-size:0.9em;\'>(Override Day)</span>' : ''}</span></h3>`;
+        dayWrapper.innerHTML = `<h3 class="day-label${isOverridden ? ' overridden-day-label' : ''}">${dayObj.label}<br><span style='font-size:0.8em;color:#888;'>${dayObj.date}${isOverridden ? ' <span style=\'color:#d00;font-size:0.9em;\'>(Override)</span>' : ''}</span></h3>`;
 
         // Generate time lines
         for (let h = 1; h <= 31; h++) {
@@ -211,8 +219,16 @@
           const top = startMinutes;
           const height = draw.duration_minutes;
 
+          // Check if this is a regular draw overlapped by an override
+          let faded = false;
+          if (!draw.is_override) {
+            const drawStart = parseInt(hourStr) * 60 + parseInt(minStr);
+            const drawEnd = drawStart + draw.duration_minutes;
+            faded = overrideRanges.some(r => drawStart < r.end && drawEnd > r.start);
+          }
+
           const div = document.createElement('div');
-          div.className = 'draw-card-abs';
+          div.className = 'draw-card-abs' + (faded ? ' faded-draw' : '');
           div.style.top = `${top}px`;
           div.style.height = `${height}px`;
           div.innerHTML = `
@@ -272,7 +288,7 @@
       form.duration_minutes.value = draw?.duration_minutes || '';
       // Set draw type switch
       setDrawOverride(!!draw?.is_override);
-      if (draw?.date) {
+      if (!!draw?.is_override) {
         form.override_date.value = draw.date;
       }
       // Disable draw type switch if editing
@@ -321,6 +337,26 @@
     document.getElementById('drawForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target;
+      const startTime = form.start_time.value;
+      const duration = parseInt(form.duration_minutes.value, 10);
+      const timePattern = /^(\d{2}):(\d{2})$/;
+      let valid = false;
+      if (timePattern.test(startTime)) {
+        const [, h, m] = startTime.match(timePattern);
+        if (+h >= 0 && +h <= 23 && +m >= 0 && +m <= 59) {
+          valid = true;
+        }
+      }
+      if (!valid) {
+        alert('Start Time must be in HH:MM format, with hours 00-23 and minutes 00-59.');
+        form.start_time.focus();
+        return;
+      }
+      if (isNaN(duration) || duration <= 0 || duration > 300) {
+        alert('Duration (minutes) must be a number greater than 0 and less than or equal to 300.');
+        form.duration_minutes.focus();
+        return;
+      }
       const overrideDate = form.override_date.value;
       const data = {
         ...(overrideDate ? { override_date: overrideDate } : { day_of_week: form.day_of_week.value }),
@@ -328,9 +364,8 @@
         title: form.title.value,
         message: form.message.value,
         start_time: form.start_time.value,
-        duration_minutes: parseInt(form.duration_minutes.value)
+        duration_minutes: duration
       };
-
       if (form.id.value) {
         // Use correct endpoint for edit based on draw type
         const endpoint = overrideDate ? `/api/draw-overrides/${form.id.value}` : `/api/draws/${form.id.value}`;
@@ -348,7 +383,92 @@
           body: JSON.stringify(data)
         });
       }
+      closeForm();
+      loadDraws();
+    });
 
+    // Input mask for start_time field
+    document.addEventListener('DOMContentLoaded', function() {
+      const startTimeInput = document.querySelector('input[name="start_time"]');
+      if (startTimeInput) {
+        startTimeInput.addEventListener('input', function(e) {
+          let v = e.target.value.replace(/[^0-9:]/g, '');
+          // Only allow up to 5 chars, and force format ##:##
+          if (v.length > 5) v = v.slice(0, 5);
+          // Insert colon if not present and length > 2
+          if (v.length > 2 && v[2] !== ':') {
+            v = v.slice(0,2) + ':' + v.slice(2);
+          }
+          // Remove extra colons
+          v = v.replace(/(\:)(?=.*\:)/g, '');
+          // Validate hours and minutes as user types
+          const parts = v.split(':');
+          if (parts.length === 2) {
+            let [h, m] = parts;
+            if (h.length > 2) h = h.slice(0,2);
+            if (m.length > 2) m = m.slice(0,2);
+            // Only allow 00-23 for hours
+            if (h && (isNaN(h) || +h < 0 || +h > 23)) h = h.slice(0,1);
+            // Only allow 00-59 for minutes
+            if (m && (isNaN(m) || +m < 0 || +m > 59)) m = m.slice(0,1);
+            v = h;
+            if (m !== undefined) v += ':' + m;
+          }
+          e.target.value = v;
+        });
+      }
+    });
+
+    // Combined validation and save logic for drawForm
+    document.getElementById('drawForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const startTime = form.start_time.value;
+      const duration = parseInt(form.duration_minutes.value, 10);
+      const timePattern = /^(\d{2}):(\d{2})$/;
+      let valid = false;
+      if (timePattern.test(startTime)) {
+        const [, h, m] = startTime.match(timePattern);
+        if (+h >= 0 && +h <= 23 && +m >= 0 && +m <= 59) {
+          valid = true;
+        }
+      }
+      if (!valid) {
+        alert('Start Time must be in HH:MM format, with hours 00-23 and minutes 00-59.');
+        form.start_time.focus();
+        return;
+      }
+      if (isNaN(duration) || duration <= 0 || duration > 180) {
+        alert('Duration (minutes) must be a number greater than 0 and less than or equal to 180.');
+        form.duration_minutes.focus();
+        return;
+      }
+      const overrideDate = form.override_date.value;
+      const data = {
+        ...(overrideDate ? { override_date: overrideDate } : { day_of_week: form.day_of_week.value }),
+        day_of_week: form.day_of_week.value,
+        title: form.title.value,
+        message: form.message.value,
+        start_time: form.start_time.value,
+        duration_minutes: duration
+      };
+      if (form.id.value) {
+        // Use correct endpoint for edit based on draw type
+        const endpoint = overrideDate ? `/api/draw-overrides/${form.id.value}` : `/api/draws/${form.id.value}`;
+        await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(data)
+        });
+      } else {
+        await fetch('/api/draws', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(data)
+        });
+      }
       closeForm();
       loadDraws();
     });

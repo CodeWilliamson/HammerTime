@@ -74,16 +74,31 @@ export function getCurrentDraw() {
     String(now.getMonth() + 1).padStart(2, '0') + '-' +
     String(now.getDate()).padStart(2, '0');
   const overrideStmt = db.prepare('SELECT * FROM draw_overrides WHERE date = ?');
-  let draws = overrideStmt.all(isoDate);
-  // if no override draws, get all recurring draws for today
-  if (draws.length === 0) {
-    const day = now.toLocaleDateString("en-CA", { weekday: "long" });
-    const stmt = db.prepare(`
-      SELECT * FROM draws
-      WHERE day_of_week = ?
-      ORDER BY start_time ASC
-    `);
-    draws = stmt.all(day);
+  const overrides = overrideStmt.all(isoDate);
+  const day = now.toLocaleDateString("en-CA", { weekday: "long" });
+  const stmt = db.prepare(`
+    SELECT * FROM draws
+    WHERE day_of_week = ?
+    ORDER BY start_time ASC
+  `);
+  const weeklyDraws = stmt.all(day);
+
+  let draws = [];
+  if (overrides.length > 0) {
+    // Exclude weekly draws that overlap with any override
+    const nonOverlappingWeeklyDraws = weeklyDraws.filter(wd => {
+      const wdStart = parseTimeToMinutes(wd.start_time);
+      const wdEnd = wdStart + wd.duration_minutes;
+      return !overrides.some(ov => {
+        const ovStart = parseTimeToMinutes(ov.start_time);
+        const ovEnd = ovStart + ov.duration_minutes;
+        return wdStart < ovEnd && wdEnd > ovStart;
+      });
+    });
+    draws = [...overrides, ...nonOverlappingWeeklyDraws];
+  } else {
+    // No overrides, just use weekly draws
+    draws = weeklyDraws;
   }
 
   let lastEndedDraw = null;
@@ -109,6 +124,12 @@ export function getCurrentDraw() {
 
   // Return both so /api/timer/state can decide what to do
   return { lastEndedDraw, nextDraw };
+}
+
+// Helper function to convert HH:MM to minutes since midnight
+function parseTimeToMinutes(timeStr) {
+  const [h, m] = timeStr.split(":").map(Number);
+  return h * 60 + m;
 }
 
 export function getConfig() {
@@ -189,7 +210,7 @@ export function getAllDraws() {
     const overridesByDate = {};
     for (const o of allOverrides) {
       if (!overridesByDate[o.date]) overridesByDate[o.date] = [];
-      overridesByDate[o.date].push({...o, is_override: true});
+      overridesByDate[o.date].push({ ...o, is_override: true });
     }
     // Get all recurring draws
     const drawsStmt = db.prepare('SELECT * FROM draws ORDER BY day_of_week ASC, start_time ASC');
@@ -200,20 +221,33 @@ export function getAllDraws() {
     weekStart.setDate(today.getDate() - today.getDay());
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
-    // Collect overrides for this week only
+
     for (let i = 0; i < 7; i++) {
       const d = new Date(weekStart);
       d.setDate(weekStart.getDate() + i);
       const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-      // Fix: Use the date string as returned by SQLite (zero-padded month and day)
-      if (overridesByDate[dateStr] && overridesByDate[dateStr].length > 0) {
-        overridesByDate[dateStr].forEach(o => drawsForWeek.push({ ...o, date: o.date }));
-      } else {
-        // Use recurring draws for this day of week
-        const dayOfWeekStr = d.toLocaleDateString('en-CA', { weekday: 'long' });
-        allDraws.filter(r => r.day_of_week === dayOfWeekStr).forEach(r => drawsForWeek.push({ ...r, day_of_week: dayOfWeekStr, date: dateStr }));
-      }
+      const dayOfWeekStr = d.toLocaleDateString('en-CA', { weekday: 'long' });
+
+      // Get all weekly draws for this day
+      const weeklyDraws = allDraws
+        .filter(r => r.day_of_week === dayOfWeekStr)
+        .map(r => ({ ...r, day_of_week: dayOfWeekStr, date: dateStr }));
+
+      // Get all overrides for this date
+      const overrides = (overridesByDate[dateStr] || []).map(o => ({ ...o, date: o.date, is_override: true }));
+
+      // Build a map of start_time to override for quick lookup
+      const overrideTimes = new Set(overrides.map(o => o.start_time));
+
+      // Add overrides first (they take precedence)
+      overrides.forEach(o => drawsForWeek.push(o));
+
+      // Add weekly draws that do NOT overlap with an override
+      weeklyDraws
+        .filter(wd => !overrideTimes.has(wd.start_time))
+        .forEach(wd => drawsForWeek.push(wd));
     }
+
     // Collect future overrides (after this week)
     const futureOverrides = allOverrides.filter(o => {
       // Compare using only the date part (ignore time zone issues)
@@ -221,6 +255,7 @@ export function getAllDraws() {
       const weekEndDate = new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate());
       return oDate > weekEndDate;
     }).map(o => ({ ...o, is_override: true }));
+
     return { drawsForWeek, futureOverrides };
 }
 
