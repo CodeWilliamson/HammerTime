@@ -142,16 +142,16 @@ export function getConfig() {
   return stmt.get();
 }
 
+export function addDrawOverride(draw) {
+  const stmt = db.prepare(`
+    INSERT INTO draw_overrides (date, title, message, start_time, duration_minutes)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  const result = stmt.run(draw.date, draw.title, draw.message, draw.start_time, draw.duration_minutes);
+  return { id: result.lastInsertRowid, override: true };
+}
+
 export function addDraw(draw) {
-  if (draw.override_date) {
-    // Save as override for a specific date
-    const stmt = db.prepare(`
-      INSERT INTO draw_overrides (date, title, message, start_time, duration_minutes)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    const result = stmt.run(draw.override_date, draw.title, draw.message, draw.start_time, draw.duration_minutes);
-    return { id: result.lastInsertRowid, override: true };
-  } else if (draw.day_of_week) {
     // Save as recurring draw
     const stmt = db.prepare(`
       INSERT INTO draws (day_of_week, title, message, start_time, duration_minutes)
@@ -159,9 +159,6 @@ export function addDraw(draw) {
     `);
     const result = stmt.run(draw.day_of_week, draw.title, draw.message, draw.start_time, draw.duration_minutes);
     return { id: result.lastInsertRowid, override: false };
-  } else {
-    throw new Error('Draw must have either an override_date or day_of_week');
-  }
 }
 
 export function updateDraw(id, updates) {
