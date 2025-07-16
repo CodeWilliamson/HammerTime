@@ -30,6 +30,35 @@
       </select>
     </div>
 
+    <details id="configPanel" style="margin-bottom:2em;">
+      <summary style="font-size:1.2em;cursor:pointer;">🎨 Timer Display Config</summary>
+      <form id="configForm"
+        style="margin:1em 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1em;">
+        <div><label>Background<br><input type="color" name="background_color"></label></div>
+        <div><label>Background (Warning)<br><input type="color" name="background_color_warning"></label></div>
+        <div><label>Background (Critical)<br><input type="color" name="background_color_critical"></label></div>
+        <div><label>Timer<br><input type="color" name="timer_color"></label></div>
+        <div><label>Timer (Warning)<br><input type="color" name="timer_color_warning"></label></div>
+        <div><label>Timer (Critical)<br><input type="color" name="timer_color_critical"></label></div>
+        <div><label>Status<br><input type="color" name="status_color"></label></div>
+        <div><label>Status (Warning)<br><input type="color" name="status_color_warning"></label></div>
+        <div><label>Status (Critical)<br><input type="color" name="status_color_critical"></label></div>
+        <div><label>Message<br><input type="color" name="message_color"></label></div>
+        <div><label>Message (Warning)<br><input type="color" name="message_color_warning"></label></div>
+        <div><label>Message (Critical)<br><input type="color" name="message_color_critical"></label></div>
+        <div><label>Timer Font Size<br><input type="text" name="timer_font_size" placeholder="e.g. 28vw or 10em"></label>
+        </div>
+        <div><label>Label Font Size<br><input type="text" name="label_font_size" placeholder="e.g. 5vw or 2em"></label>
+        </div>
+        <div><label>Message Font Size<br><input type="text" name="message_font_size" placeholder="e.g. 5vw or 2em"></label>
+        </div>
+        <div style="grid-column:1/-1;text-align:right;">
+          <button type="submit" class="save-btn">Save Config</button>
+        </div>
+      </form>
+      <div id="configStatus" style="color:green;font-size:0.95em;"></div>
+    </details>
+
     <button class="add-btn" onclick="openForm()">+</button>
   </div>
 

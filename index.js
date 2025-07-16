@@ -1,5 +1,5 @@
 import express from "express";
-import { getCurrentDraw, getConfig, getAllDraws, getDrawById, addDraw, addDrawOverride, updateDraw, deleteDraw, deleteDrawOverride, updateDrawOverride } from "./db.js";
+import { getCurrentDraw, getConfig, getAllDraws, getDrawById, addDraw, addDrawOverride, updateDraw, deleteDraw, deleteDrawOverride, updateDrawOverride, getFullConfig, updateConfig } from "./db.js";
 import authRouter, { requireAuth } from "./auth.js";
 import cookieParser from "cookie-parser";
 
@@ -21,7 +21,7 @@ app.use('/auth', authRouter);
 app.get("/api/timer/state", (req, res) => {
   // Check if config has changed
   const clientConfigTimestamp = new Date(req.query.lastConfigSeenAt || 0);
-  const config = getConfig();
+  const config = getFullConfig();
   const configChanged = new Date(config.updated_at) > clientConfigTimestamp;
   let state = {};
   // Append config only if changed
@@ -130,8 +130,6 @@ app.post("/api/draws", requireAuth, (req, res) => {
   }
 });
 
-
-
 app.put("/api/draws/:id", requireAuth, (req, res) => {
   try {
     updateDraw(req.params.id, req.body);
@@ -184,6 +182,18 @@ app.delete("/api/draw-overrides/:id", requireAuth, (req, res) => {
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
+});
+
+// Timer config API (for dynamic CSS)
+app.get('/api/timer/config', requireAuth, (req, res) => {
+  const config = getFullConfig();
+  res.json(config);
+});
+
+app.put('/api/timer/config', requireAuth, (req, res) => {
+  const ok = updateConfig(req.body);
+  if (!ok) return res.status(400).json({ error: 'No valid fields to update' });
+  res.status(204).end();
 });
 
 app.listen(port, () => {

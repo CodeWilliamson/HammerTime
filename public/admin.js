@@ -362,8 +362,60 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// --- Timer Config Panel Logic ---
+async function loadConfig() {
+  const res = await fetch('/api/timer/config', { credentials: 'include' });
+  if (!res.ok) return;
+  const config = await res.json();
+  const form = document.getElementById('configForm');
+  for (const k in config) {
+    if (form[k]) form[k].value = config[k];
+  }
+  applyConfigToCSS(config);
+}
+
+function applyConfigToCSS(config) {
+  // Set CSS variables for use in app (can be used in main.css or inline)
+  const root = document.documentElement;
+  for (const k in config) {
+    if (
+      k.endsWith('_color') ||
+      k.endsWith('_warning') ||
+      k.endsWith('_critical') ||
+      k.endsWith('_font_size')
+    ) {
+      root.style.setProperty(`--${k.replace(/_/g, '-')}`, config[k]);
+    }
+  }
+}
+
+async function saveConfig(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = {};
+  for (const el of form.elements) {
+    if (el.name) data[el.name] = el.value;
+  }
+  const res = await fetch('/api/timer/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data)
+  });
+  if (res.ok) {
+    document.getElementById('configStatus').textContent = 'Saved!';
+    loadConfig();
+    setTimeout(() => { document.getElementById('configStatus').textContent = ''; }, 1500);
+  } else {
+    document.getElementById('configStatus').textContent = 'Error saving config.';
+  }
+}
+
+
 window.addEventListener("resize", loadDraws);
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("drawForm").addEventListener("submit", saveDraw);
+    document.getElementById('configForm').addEventListener('submit', saveConfig);
 });
 loadDraws();
+loadConfig();

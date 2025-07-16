@@ -6,24 +6,17 @@ let timerState = {
 };
 
 function applyConfig(config) {
-  if (config.background_color) {
-    document.body.style.background = config.background_color;
-    document.documentElement.style.backgroundColor = config.background_color; 
-  }
-
-  if (config.timer_color) {
-    const timer = document.getElementById("timer");
-    timer.style.color = config.timer_color; // base color — overridden by warning/critical classes if present
-  }
-
-  if (config.status_color) {
-    const label = document.getElementById("label");
-    label.style.color = config.status_color;
-  }
-
-  if (config.message_color) {
-    const message = document.getElementById("message");
-    message.style.color = config.message_color;
+  // Set CSS variables for use in app (can be used in main.css or inline)
+  const root = document.documentElement;
+  for (const k in config) {
+    if (
+      k.endsWith('_color') ||
+      k.endsWith('_warning') ||
+      k.endsWith('_critical') ||
+      k.endsWith('_font_size')
+    ) {
+      root.style.setProperty(`--${k.replace(/_/g, '-')}`, config[k]);
+    }
   }
 }
 

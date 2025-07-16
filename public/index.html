@@ -10,8 +10,8 @@
     body {
       margin: 0;
       padding: 0;
-      background: #111;
       color: #eee;
+      background: var(--background-color, #111);
       font-family: 'Segoe UI', sans-serif;
       height: 100%;
       overflow: hidden;
@@ -22,19 +22,66 @@
       cursor: none;
     }
 
+    body.warning {
+      background-color: var(--background-color-warning, #222);
+    }
+    
+    body.critical {
+      background-color: var(--background-color-critical, #222);
+    }
+
+    #timer {
+      color: var(--timer-color, #eee);
+      font-size: 28vw;
+      font-weight: bold;
+      line-height: 1;
+      transition: color 0.5s;
+      text-align: center;
+    }
+
+    #timer.warning {
+      color: var(--timer-color-warning, #ffa600) !important;
+    }
+
+    #timer.critical {
+      color: var(--timer-color-critical, #ff0000) !important;
+    }
+
+    #timer .small-sec {
+      font-size: 0.3em;
+      vertical-align: super;
+    }
+
     #label {
       font-size: 5vw;
       margin-bottom: 2vh;
       text-align: center;
       transition: font-size 0.3s ease;
+      color: var(--status-color, #eee);
+    }
+
+    #label.warning {
+      color: var(--status-color-warning, #eee);
+    }
+    
+    #label.critical {
+      color: var(--status-color-critical, #eee);
     }
 
     #message {
       font-size: 5vw;
-      color: #ccc;
+      color: var(--message-color, #ccc);
       text-align: center;
       max-width: 90vw;
       line-height: 1.2;
+    }
+
+    #message.warning {
+      color: var(--message-color-warning, #ccc);
+    }
+
+    #message.critical {
+      color: var(--message-color-critical, #ccc);
     }
 
     .no-timer #label,
@@ -43,24 +90,15 @@
     }
 
     #timer {
-      font-size: 28vw;
-      font-weight: bold;
-      line-height: 1;
-      transition: color 0.5s;
-      text-align: center;
+      font-size: var(--timer-font-size, 28vw);
     }
 
-    .warning {
-      color: orange !important;
+    #label {
+      font-size: var(--label-font-size, 5vw);
     }
 
-    .critical {
-      color: red !important;
-    }
-
-    #timer .small-sec {
-      font-size: 0.3em;
-      vertical-align: super;
+    #message {
+      font-size: var(--message-font-size, 5vw);
     }
   </style>
 </head>

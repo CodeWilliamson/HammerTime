@@ -3,6 +3,7 @@ import Database from "better-sqlite3";
 const db = new Database("./data/schedule.db");
 import bcrypt from "bcryptjs";
 
+
 // Initialize table if not exists
 db.exec(`
   CREATE TABLE IF NOT EXISTS draws (
@@ -28,13 +29,24 @@ db.exec(`
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS timer_config (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  background_color VARCHAR(20) NOT NULL DEFAULT '#111111',
-  timer_color VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
-  status_color VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
-  message_color VARCHAR(20) NOT NULL DEFAULT '#cccccc',
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    background_color VARCHAR(20) NOT NULL DEFAULT '#111111',
+    background_color_warning VARCHAR(20) NOT NULL DEFAULT '#111111',
+    background_color_critical VARCHAR(20) NOT NULL DEFAULT '#111111',
+    timer_color VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
+    timer_color_warning VARCHAR(20) NOT NULL DEFAULT '#ffa600',
+    timer_color_critical VARCHAR(20) NOT NULL DEFAULT '#ff0000',
+    status_color VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
+    status_color_warning VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
+    status_color_critical VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
+    message_color VARCHAR(20) NOT NULL DEFAULT '#cccccc',
+    message_color_warning VARCHAR(20) NOT NULL DEFAULT '#cccccc',
+    message_color_critical VARCHAR(20) NOT NULL DEFAULT '#cccccc',
+    timer_font_size VARCHAR(10) NOT NULL DEFAULT '28vw',
+    label_font_size VARCHAR(10) NOT NULL DEFAULT '5vw',
+    message_font_size VARCHAR(10) NOT NULL DEFAULT '5vw',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 const existingConfigCount = db.prepare(`SELECT COUNT(*) as count FROM timer_config`).get().count;
@@ -42,14 +54,33 @@ const existingConfigCount = db.prepare(`SELECT COUNT(*) as count FROM timer_conf
 if (existingConfigCount === 0) {
   db.prepare(
     `
-    INSERT INTO timer_config (background_color, timer_color, status_color, message_color)
-    VALUES (@background_color, @timer_color, @status_color, @message_color)
+    INSERT INTO timer_config (background_color, background_color_warning, background_color_critical,
+    timer_color, timer_color_warning, timer_color_critical,
+    status_color, status_color_warning, status_color_critical,
+    message_color, message_color_warning, message_color_critical,
+    timer_font_size, label_font_size, message_font_size)
+    VALUES (@background_color, @background_color_warning, @background_color_critical,
+    @timer_color, @timer_color_warning, @timer_color_critical,
+    @status_color, @status_color_warning, @status_color_critical,
+    @message_color, @message_color_warning, @message_color_critical,
+    @timer_font_size, @label_font_size, @message_font_size)
   `
   ).run({
-    background_color: "#111111",
-    timer_color: "#eeeeee",
-    status_color: "#eeeeee",
-    message_color: "#cccccc",
+    background_color:'#111111',
+    background_color_warning :'#111111',
+    background_color_critical:'#111111',
+    timer_color :'#eeeeee',
+    timer_color_warning : '#ffa600',
+    timer_color_critical : '#ff0000',
+    status_color : '#eeeeee',
+    status_color_warning : '#eeeeee',
+    status_color_critical : '#eeeeee',
+    message_color : '#cccccc',
+    message_color_warning : '#cccccc',
+    message_color_critical : '#cccccc',
+    timer_font_size : '28vw',
+    label_font_size : '5vw',
+    message_font_size : '5vw',
   });
 }
 
@@ -126,15 +157,49 @@ export function getCurrentDraw() {
   return { lastEndedDraw, nextDraw };
 }
 
+
 // Helper function to convert HH:MM to minutes since midnight
 function parseTimeToMinutes(timeStr) {
   const [h, m] = timeStr.split(":").map(Number);
   return h * 60 + m;
 }
 
+// Get all timer_config fields (for config UI)
+export function getFullConfig() {
+  const stmt = db.prepare(`SELECT * FROM timer_config ORDER BY updated_at DESC LIMIT 1`);
+  return stmt.get();
+}
+
+// Update all timer_config fields (for config UI)
+export function updateConfig(updates) {
+  // Only allow updating known fields
+  const allowedFields = [
+    'background_color', 'background_color_warning', 'background_color_critical',
+    'timer_color', 'timer_color_warning', 'timer_color_critical',
+    'status_color', 'status_color_warning', 'status_color_critical',
+    'message_color', 'message_color_warning', 'message_color_critical',
+    'timer_font_size', 'label_font_size', 'message_font_size'
+  ];
+  const setClauses = [];
+  const values = [];
+  for (const key of allowedFields) {
+    if (Object.prototype.hasOwnProperty.call(updates, key)) {
+      setClauses.push(`${key} = ?`);
+      values.push(updates[key]);
+    }
+  }
+  if (setClauses.length === 0) return false;
+  // Always update updated_at
+  setClauses.push('updated_at = CURRENT_TIMESTAMP');
+  const sql = `UPDATE timer_config SET ${setClauses.join(', ')} WHERE id = (SELECT id FROM timer_config ORDER BY updated_at DESC LIMIT 1)`;
+  const stmt = db.prepare(sql);
+  const result = stmt.run(...values);
+  return result.changes > 0;
+}
+
 export function getConfig() {
   const stmt = db.prepare(`
-    SELECT background_color, timer_color, status_color, message_color, updated_at
+    SELECT *
     FROM timer_config
     ORDER BY updated_at DESC
     LIMIT 1
