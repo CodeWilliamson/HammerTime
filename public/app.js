@@ -51,8 +51,20 @@ function render() {
 
   if (["pre_draw", "running", "complete"].includes(timerState.status)) {
     showTimer = true;
-    if (timerState.timeRemaining < 300) display.classList.add("warning");
-    if (timerState.timeRemaining <= 0) display.classList.add("critical");
+    if (timerState.timeRemaining < 300) {
+      display.classList.add("warning");
+      document.body.classList.add("warning");
+    }else{
+      display.classList.remove("warning");
+      document.body.classList.remove("warning");
+    }
+    if (timerState.timeRemaining <= 0) {
+      display.classList.add("critical");
+      document.body.classList.add("critical");
+    }else{
+      display.classList.remove("critical");
+      document.body.classList.remove("critical");
+    }
     display.innerHTML = formatTime(Math.max(timerState.timeRemaining, 0));
   } else {
     display.innerHTML = "";
