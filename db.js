@@ -212,7 +212,7 @@ export function addDrawOverride(draw) {
     INSERT INTO draw_overrides (date, title, message, start_time, duration_minutes)
     VALUES (?, ?, ?, ?, ?)
   `);
-  const result = stmt.run(draw.date, draw.title, draw.message, draw.start_time, draw.duration_minutes);
+  const result = stmt.run(draw.override_date, draw.title, draw.message, draw.start_time, draw.duration_minutes);
   return { id: result.lastInsertRowid, override: true };
 }
 
