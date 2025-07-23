@@ -380,6 +380,7 @@ function applyConfigToCSS(config) {
   for (const k in config) {
     if (
       k.endsWith('_color') ||
+      k.endsWith('_running') ||
       k.endsWith('_warning') ||
       k.endsWith('_critical') ||
       k.endsWith('_font_size')

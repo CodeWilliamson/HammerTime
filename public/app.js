@@ -11,6 +11,7 @@ function applyConfig(config) {
   for (const k in config) {
     if (
       k.endsWith('_color') ||
+      k.endsWith('_running') ||
       k.endsWith('_warning') ||
       k.endsWith('_critical') ||
       k.endsWith('_font_size')
@@ -40,34 +41,34 @@ function formatTimeOfDay(date) {
 
 function render() {
   const label = document.getElementById("label");
-  const display = document.getElementById("timer");
-  const messageEl = document.getElementById("message");
+  const timer = document.getElementById("timer");
+  const message = document.getElementById("message");
 
   label.textContent = timerState.label;
-  messageEl.textContent = timerState.message || "";
+  message.textContent = timerState.message || "";
 
-  display.className = "";
+  timer.className = "";
   let showTimer = false;
 
   if (["pre_draw", "running", "complete"].includes(timerState.status)) {
     showTimer = true;
+    document.body.classList.add("running");
     if (timerState.timeRemaining < 300) {
-      display.classList.add("warning");
       document.body.classList.add("warning");
     }else{
-      display.classList.remove("warning");
       document.body.classList.remove("warning");
     }
     if (timerState.timeRemaining <= 0) {
-      display.classList.add("critical");
       document.body.classList.add("critical");
     }else{
-      display.classList.remove("critical");
       document.body.classList.remove("critical");
     }
-    display.innerHTML = formatTime(Math.max(timerState.timeRemaining, 0));
+    timer.innerHTML = formatTime(Math.max(timerState.timeRemaining, 0));
   } else {
-    display.innerHTML = "";
+    timer.innerHTML = "";
+    document.body.classList.remove("running");
+    document.body.classList.remove("warning");
+    document.body.classList.remove("critical");
   }
 
   // Adjust font size of label based on timer visibility

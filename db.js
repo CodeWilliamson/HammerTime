@@ -31,15 +31,17 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS timer_config (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     background_color VARCHAR(20) NOT NULL DEFAULT '#111111',
+    background_color_running VARCHAR(20) NOT NULL DEFAULT '#111111',
     background_color_warning VARCHAR(20) NOT NULL DEFAULT '#111111',
     background_color_critical VARCHAR(20) NOT NULL DEFAULT '#111111',
-    timer_color VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
+    timer_color_running VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
     timer_color_warning VARCHAR(20) NOT NULL DEFAULT '#ffa600',
     timer_color_critical VARCHAR(20) NOT NULL DEFAULT '#ff0000',
     status_color VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
+    status_color_running VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
     status_color_warning VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
     status_color_critical VARCHAR(20) NOT NULL DEFAULT '#eeeeee',
-    message_color VARCHAR(20) NOT NULL DEFAULT '#cccccc',
+    message_color_running VARCHAR(20) NOT NULL DEFAULT '#cccccc',
     message_color_warning VARCHAR(20) NOT NULL DEFAULT '#cccccc',
     message_color_critical VARCHAR(20) NOT NULL DEFAULT '#cccccc',
     timer_font_size VARCHAR(10) NOT NULL DEFAULT '28vw',
@@ -54,28 +56,30 @@ const existingConfigCount = db.prepare(`SELECT COUNT(*) as count FROM timer_conf
 if (existingConfigCount === 0) {
   db.prepare(
     `
-    INSERT INTO timer_config (background_color, background_color_warning, background_color_critical,
-    timer_color, timer_color_warning, timer_color_critical,
-    status_color, status_color_warning, status_color_critical,
-    message_color, message_color_warning, message_color_critical,
+    INSERT INTO timer_config (background_color, background_color_running, background_color_warning, background_color_critical,
+    timer_color_running, timer_color_warning, timer_color_critical,
+    status_color, status_color_running, status_color_warning, status_color_critical,
+    message_color_running, message_color_warning, message_color_critical,
     timer_font_size, label_font_size, message_font_size)
-    VALUES (@background_color, @background_color_warning, @background_color_critical,
-    @timer_color, @timer_color_warning, @timer_color_critical,
-    @status_color, @status_color_warning, @status_color_critical,
-    @message_color, @message_color_warning, @message_color_critical,
+    VALUES (@background_color, @background_color_running, @background_color_warning, @background_color_critical,
+    @timer_color_running, @timer_color_warning, @timer_color_critical,
+    @status_color, @status_color_running, @status_color_warning, @status_color_critical,
+    @message_color_running, @message_color_warning, @message_color_critical,
     @timer_font_size, @label_font_size, @message_font_size)
   `
   ).run({
     background_color:'#111111',
+    background_color_running:'#111111',
     background_color_warning :'#111111',
     background_color_critical:'#111111',
-    timer_color :'#eeeeee',
+    timer_color_running :'#eeeeee',
     timer_color_warning : '#ffa600',
     timer_color_critical : '#ff0000',
     status_color : '#eeeeee',
+    status_color_running : '#eeeeee',
     status_color_warning : '#eeeeee',
     status_color_critical : '#eeeeee',
-    message_color : '#cccccc',
+    message_color_running : '#cccccc',
     message_color_warning : '#cccccc',
     message_color_critical : '#cccccc',
     timer_font_size : '28vw',
@@ -174,10 +178,10 @@ export function getFullConfig() {
 export function updateConfig(updates) {
   // Only allow updating known fields
   const allowedFields = [
-    'background_color', 'background_color_warning', 'background_color_critical',
-    'timer_color', 'timer_color_warning', 'timer_color_critical',
-    'status_color', 'status_color_warning', 'status_color_critical',
-    'message_color', 'message_color_warning', 'message_color_critical',
+    'background_color', 'background_color_running', 'background_color_warning', 'background_color_critical',
+    'timer_color_running', 'timer_color_warning', 'timer_color_critical',
+    'status_color', 'status_color_running', 'status_color_warning', 'status_color_critical',
+    'message_color_running', 'message_color_warning', 'message_color_critical',
     'timer_font_size', 'label_font_size', 'message_font_size'
   ];
   const setClauses = [];
