@@ -47,6 +47,8 @@ db.exec(`
     timer_font_size VARCHAR(10) NOT NULL DEFAULT '28vw',
     label_font_size VARCHAR(10) NOT NULL DEFAULT '5vw',
     message_font_size VARCHAR(10) NOT NULL DEFAULT '5vw',
+    pre_draw_warning_threshold INTEGER NOT NULL DEFAULT 300,
+    running_warning_threshold INTEGER NOT NULL DEFAULT 900,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 `);
@@ -60,12 +62,12 @@ if (existingConfigCount === 0) {
     timer_color_running, timer_color_warning, timer_color_critical,
     status_color, status_color_running, status_color_warning, status_color_critical,
     message_color_running, message_color_warning, message_color_critical,
-    timer_font_size, label_font_size, message_font_size)
+    timer_font_size, label_font_size, message_font_size, pre_draw_warning_threshold, running_warning_threshold)
     VALUES (@background_color, @background_color_running, @background_color_warning, @background_color_critical,
     @timer_color_running, @timer_color_warning, @timer_color_critical,
     @status_color, @status_color_running, @status_color_warning, @status_color_critical,
     @message_color_running, @message_color_warning, @message_color_critical,
-    @timer_font_size, @label_font_size, @message_font_size)
+    @timer_font_size, @label_font_size, @message_font_size, @pre_draw_warning_threshold, @running_warning_threshold)
   `
   ).run({
     background_color:'#111111',
@@ -85,6 +87,8 @@ if (existingConfigCount === 0) {
     timer_font_size : '28vw',
     label_font_size : '5vw',
     message_font_size : '5vw',
+    pre_draw_warning_threshold : 300,
+    running_warning_threshold : 900
   });
 }
 
@@ -182,7 +186,7 @@ export function updateConfig(updates) {
     'timer_color_running', 'timer_color_warning', 'timer_color_critical',
     'status_color', 'status_color_running', 'status_color_warning', 'status_color_critical',
     'message_color_running', 'message_color_warning', 'message_color_critical',
-    'timer_font_size', 'label_font_size', 'message_font_size'
+    'timer_font_size', 'label_font_size', 'message_font_size', 'pre_draw_warning_threshold', 'running_warning_threshold'
   ];
   const setClauses = [];
   const values = [];
