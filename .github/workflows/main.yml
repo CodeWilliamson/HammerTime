@@ -21,6 +21,12 @@ jobs:
           cd /home/timer/HammerTime
           npm install
 
+      - name: Run database migrations
+        run: |
+          cd /home/timer/HammerTime
+          echo "Running database migrations..."
+          npm run migrate
+
       - name: Restart service
         run: sudo /bin/systemctl restart curling-timer.service
 
