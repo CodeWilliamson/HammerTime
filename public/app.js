@@ -18,6 +18,10 @@ function applyConfig(config) {
     ) {
       root.style.setProperty(`--${k.replace(/_/g, '-')}`, config[k]);
     }
+    // else if k ends with _threshold, set javascript variable with same name for use in app.js
+    else if (k.endsWith('_threshold')) {
+      window[k] = config[k];
+    }
   }
 }
 
@@ -53,12 +57,12 @@ function render() {
   if (["pre_draw", "running", "complete"].includes(timerState.status)) {
     showTimer = true;
     document.body.classList.add("running");
-    if (timerState.timeRemaining < 300) {
+    if ((timerState.status === "pre_draw" && timerState.timeRemaining <  (window['pre_draw_warning_threshold'] || 300)) || (timerState.status === "running" && timerState.timeRemaining < (window['running_warning_threshold'] || 900))) {
       document.body.classList.add("warning");
     }else{
       document.body.classList.remove("warning");
     }
-    if (timerState.timeRemaining <= 0) {
+    if ((timerState.status === "running" || timerState.status === "complete") && timerState.timeRemaining <= 0) {
       document.body.classList.add("critical");
     }else{
       document.body.classList.remove("critical");
