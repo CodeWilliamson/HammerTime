@@ -80,7 +80,7 @@ export function updateConfig(updates) {
   // Only allow updating known fields
   const allowedFields = [
     'background_color', 'background_color_running', 'background_color_warning', 'background_color_critical',
-    'timer_color_running', 'timer_color_warning', 'timer_color_critical',
+    'timer_color', 'timer_color_running', 'timer_color_warning', 'timer_color_critical',
     'status_color', 'status_color_running', 'status_color_warning', 'status_color_critical',
     'message_color_running', 'message_color_warning', 'message_color_critical',
     'timer_font_size', 'label_font_size', 'message_font_size', 'pre_draw_warning_threshold', 'running_warning_threshold'

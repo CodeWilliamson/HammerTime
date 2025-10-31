@@ -56,7 +56,14 @@ function render() {
 
   if (["pre_draw", "running", "complete"].includes(timerState.status)) {
     showTimer = true;
-    document.body.classList.add("running");
+    if( timerState.status === "pre_draw" ){
+      document.body.classList.add("pre-draw-neutral");
+      document.body.classList.remove("running");
+    }else{
+      document.body.classList.remove("pre-draw-neutral");
+      document.body.classList.add("running");
+    }
+    
     if ((timerState.status === "pre_draw" && timerState.timeRemaining <  (window['pre_draw_warning_threshold'] || 300)) || (timerState.status === "running" && timerState.timeRemaining < (window['running_warning_threshold'] || 900))) {
       document.body.classList.add("warning");
     }else{
@@ -70,6 +77,7 @@ function render() {
     timer.innerHTML = formatTime(Math.max(timerState.timeRemaining, 0));
   } else {
     timer.innerHTML = "";
+    document.body.classList.remove("pre-draw-neutral");
     document.body.classList.remove("running");
     document.body.classList.remove("warning");
     document.body.classList.remove("critical");
