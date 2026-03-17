@@ -1,4 +1,4 @@
--- Migration 1.1.0: Add warning threshold columns to timer_config
+-- Migration 1.2.0: Add timer_color column to timer_config
 
 ALTER TABLE timer_config ADD COLUMN timer_color INTEGER NOT NULL DEFAULT '#eeeeee';
 
