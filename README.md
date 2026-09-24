@@ -4,6 +4,8 @@
 
 HammerTime shows players and spectators the time remaining in the current draw, automatically transitioning through draw states — pre-draw countdown, active timer, and completion — based on a weekly schedule. Date-specific overrides let you easily accommodate bonspiels or other special events without changing your regular schedule.
 
+<a href="https://www.buymeacoffee.com/marksmakes" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
 [![Deploy on Raspberry Pi](https://github.com/CodeWilliamson/HammerTime/actions/workflows/main.yml/badge.svg)](https://github.com/CodeWilliamson/HammerTime/actions/workflows/main.yml)
 
 ---
