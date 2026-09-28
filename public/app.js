@@ -170,7 +170,7 @@ async function showSplash() {
     if (!durationSeconds) return;
 
     const splash = document.getElementById("splash");
-    document.getElementById("splash-title").textContent = adminUrl ? "Admin panel:" : "No Network Found";
+    document.getElementById("splash-title").textContent = adminUrl ? "HammerTime Admin" : "No Network Found";
     document.getElementById("splash-url").textContent = adminUrl || "";
     splash.classList.add("visible");
 
