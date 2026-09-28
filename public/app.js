@@ -157,6 +157,33 @@ async function syncState() {
   }
 }
 
-setInterval(tick, 1000);
-setInterval(syncState, 5000);
-syncState();
+function startTimer() {
+  setInterval(tick, 1000);
+  setInterval(syncState, 5000);
+  syncState();
+}
+
+async function showSplash() {
+  try {
+    const res = await fetch("/api/timer/splash");
+    const { adminUrl, durationSeconds } = await res.json();
+    if (!durationSeconds) return;
+
+    const splash = document.getElementById("splash");
+    document.getElementById("splash-title").textContent = adminUrl ? "Admin panel:" : "No Network Found";
+    document.getElementById("splash-url").textContent = adminUrl || "";
+    splash.classList.add("visible");
+
+    const bar = document.getElementById("splash-bar");
+    bar.style.transitionDuration = `${durationSeconds}s`;
+    bar.getBoundingClientRect(); // force layout so the transition starts from full width
+    bar.style.transform = "scaleX(0)";
+
+    await new Promise(resolve => setTimeout(resolve, durationSeconds * 1000));
+    splash.classList.remove("visible");
+  } catch (e) {
+    console.error("Splash failed", e);
+  }
+}
+
+showSplash().then(startTimer);

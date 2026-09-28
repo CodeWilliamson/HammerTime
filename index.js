@@ -1,10 +1,15 @@
 import express from "express";
 import { getCurrentDraw, getConfig, getAllDraws, getDrawById, addDraw, addDrawOverride, updateDraw, deleteDraw, deleteDrawOverride, updateDrawOverride, getFullConfig, updateConfig } from "./db.js";
 import authRouter, { requireAuth } from "./auth.js";
+import { getHostIP } from "./util.js";
 import cookieParser from "cookie-parser";
+import dotenv from "dotenv";
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+const parsedSplashSeconds = Number(process.env.ADMIN_URL_DISPLAY_SECONDS ?? 5);
+const adminUrlDisplaySeconds = Number.isFinite(parsedSplashSeconds) && parsedSplashSeconds >= 0 ? parsedSplashSeconds : 5;
 
 app.use(express.json());
 app.use(cookieParser());
@@ -16,6 +21,14 @@ app.get('/admin', (req, res) => {
 
 // Auth routes
 app.use('/auth', authRouter);
+
+app.get("/api/timer/splash", (req, res) => {
+  const ip = getHostIP();
+  res.json({
+    adminUrl: ip ? `http://${ip}:${port}/admin` : null,
+    durationSeconds: adminUrlDisplaySeconds,
+  });
+});
 
 // Existing timer state route
 app.get("/api/timer/state", (req, res) => {

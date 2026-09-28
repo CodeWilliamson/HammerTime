@@ -1,0 +1,23 @@
+[Unit]
+Description=HammerTime kiosk display
+After=hammertime.service
+PartOf=hammertime.service
+
+[Service]
+User=pi
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+
+ExecStartPre=/bin/sh -c 'until curl -fsS http://localhost:3000/ > /dev/null; do sleep 1; done'
+ExecStart=/usr/bin/labwc
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

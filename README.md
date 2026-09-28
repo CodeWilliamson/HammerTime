@@ -93,6 +93,7 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 |---|---|---|
 | `PORT` | `3000` | Port the server listens on |
 | `JWT_SECRET` | `timertimertimer` | Secret key for signing JWT tokens — **change this in production** |
+| `ADMIN_URL_DISPLAY_SECONDS` | `5` | Seconds to show the admin URL on the timer display at startup (`0` disables) |
 
 ---
 
