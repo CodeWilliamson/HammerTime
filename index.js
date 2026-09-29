@@ -25,7 +25,7 @@ app.use('/auth', authRouter);
 app.get("/api/timer/splash", (req, res) => {
   const ip = getHostIP();
   res.json({
-    adminUrl: ip ? `http://${ip}:${port}/admin` : null,
+    adminUrl: ip ? `http://${ip}/admin` : null,
     durationSeconds: adminUrlDisplaySeconds,
   });
 });
