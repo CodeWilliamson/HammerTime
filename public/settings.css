@@ -79,7 +79,7 @@ main {
 
 .preview-tile {
   position: relative;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 9;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -91,6 +91,7 @@ main {
   font-family: "Segoe UI", sans-serif;
   border: 1px solid rgba(0, 0, 0, 0.08);
   transition: background 0.2s;
+  container-type: inline-size;
 }
 
 .preview-tag {
@@ -106,14 +107,12 @@ main {
 
 .p-status,
 .p-message {
-  font-size: 0.7rem;
   line-height: 1.2;
 }
 
 .p-timer {
-  font-size: 1.9rem;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1;
 }
 
 /* Color matrix */
@@ -205,6 +204,26 @@ input[type="color"]:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
   border-color: transparent;
+}
+
+.size-control {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.size-control input[type="range"] {
+  width: 160px;
+  accent-color: var(--accent);
+}
+
+.field-row .size-control input[type="number"] {
+  width: 76px;
+}
+
+.size-control span {
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .suffix-input {

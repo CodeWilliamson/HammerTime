@@ -30,16 +30,31 @@
       <section class="card">
         <h2>Typography</h2>
         <div class="field-row">
-          <label for="timer_font_size">Timer size</label>
-          <input type="text" id="timer_font_size" name="timer_font_size" placeholder="28vw" />
+          <label for="timer_font_size_num">Timer size</label>
+          <div class="size-control" data-size-field="timer_font_size" data-min="5" data-max="50" data-step="0.5">
+            <input type="hidden" name="timer_font_size" />
+            <input type="range" aria-label="Timer size slider" />
+            <input type="number" id="timer_font_size_num" />
+            <span>vw</span>
+          </div>
         </div>
         <div class="field-row">
-          <label for="label_font_size">Status size</label>
-          <input type="text" id="label_font_size" name="label_font_size" placeholder="5vw" />
+          <label for="label_font_size_num">Status size</label>
+          <div class="size-control" data-size-field="label_font_size" data-min="1" data-max="15" data-step="0.5">
+            <input type="hidden" name="label_font_size" />
+            <input type="range" aria-label="Status size slider" />
+            <input type="number" id="label_font_size_num" />
+            <span>vw</span>
+          </div>
         </div>
         <div class="field-row">
-          <label for="message_font_size">Message size</label>
-          <input type="text" id="message_font_size" name="message_font_size" placeholder="5vw" />
+          <label for="message_font_size_num">Message size</label>
+          <div class="size-control" data-size-field="message_font_size" data-min="1" data-max="15" data-step="0.5">
+            <input type="hidden" name="message_font_size" />
+            <input type="range" aria-label="Message size slider" />
+            <input type="number" id="message_font_size_num" />
+            <span>vw</span>
+          </div>
         </div>
       </section>
 

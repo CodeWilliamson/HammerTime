@@ -91,6 +91,53 @@ function updatePreview() {
     tile.querySelector(".p-timer").style.color = val("timer");
     tile.querySelector(".p-status").style.color = val("status");
     tile.querySelector(".p-message").style.color = val("message");
+
+    // Tile is a size container, so 1cqw here equals 1vw on the kiosk
+    const size = (name, fallback) => `${parseFloat(form[name].value) || fallback}cqw`;
+    tile.querySelector(".p-timer").style.fontSize = size("timer_font_size", 28);
+    tile.querySelector(".p-status").style.fontSize = size("label_font_size", 5);
+    tile.querySelector(".p-message").style.fontSize = size("message_font_size", 5);
+  });
+}
+
+// Font sizes are stored as "<n>vw"; the slider and stepper both edit the hidden field
+function clampSize(control, n) {
+  const min = parseFloat(control.dataset.min);
+  const max = parseFloat(control.dataset.max);
+  return Math.min(max, Math.max(min, n));
+}
+
+function syncSizeControl(control) {
+  const hidden = control.querySelector('input[type="hidden"]');
+  const [range, num] = control.querySelectorAll('input[type="range"], input[type="number"]');
+  const parsed = parseFloat(hidden.value);
+  const n = clampSize(control, Number.isFinite(parsed) ? parsed : parseFloat(control.dataset.min));
+  hidden.value = `${n}vw`;
+  range.value = n;
+  num.value = n;
+}
+
+function setupSizeControls() {
+  document.querySelectorAll(".size-control").forEach((control) => {
+    const hidden = control.querySelector('input[type="hidden"]');
+    const [range, num] = control.querySelectorAll('input[type="range"], input[type="number"]');
+    for (const input of [range, num]) {
+      input.min = control.dataset.min;
+      input.max = control.dataset.max;
+      input.step = control.dataset.step;
+    }
+    range.addEventListener("input", () => {
+      hidden.value = `${range.value}vw`;
+      num.value = range.value;
+    });
+    num.addEventListener("input", () => {
+      const n = parseFloat(num.value);
+      if (!Number.isFinite(n)) return;
+      const clamped = clampSize(control, n);
+      hidden.value = `${clamped}vw`;
+      range.value = clamped;
+    });
+    num.addEventListener("change", () => syncSizeControl(control));
   });
 }
 
@@ -128,8 +175,9 @@ function fillForm(config) {
   for (const k in config) {
     if (form[k] instanceof HTMLInputElement) form[k].value = config[k] ?? "";
   }
-  // Snapshot after the browser normalizes values (e.g. color hex casing)
+  // Snapshot after the browser normalizes values (e.g. color hex casing), before sizes are coerced to vw
   baseline = getFormData();
+  document.querySelectorAll(".size-control").forEach(syncSizeControl);
   refreshState();
 }
 
@@ -180,6 +228,7 @@ window.addEventListener("beforeunload", (e) => {
 
 buildColorMatrix();
 buildPreview();
+setupSizeControls();
 const form = document.getElementById("configForm");
 form.addEventListener("input", refreshState);
 form.addEventListener("submit", saveConfig);
