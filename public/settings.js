@@ -2,7 +2,7 @@ const STATES = [
   { key: "", label: "Idle" },
   { key: "running", label: "Running" },
   { key: "warning", label: "Warning" },
-  { key: "critical", label: "Times Up" },
+  { key: "critical", label: "Game End" },
 ];
 const ELEMENTS = [
   { key: "background", label: "Background" },
