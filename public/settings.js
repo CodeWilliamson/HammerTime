@@ -59,7 +59,7 @@ function buildColorMatrix() {
 function buildPreview() {
   const grid = document.getElementById("previewGrid");
   const samples = {
-    "": { status: "Draw starts in:", timer: "15:00", message: "" },
+    "": { status: "Next draw: 7:00 PM", timer: "", message: "" },
     running: { status: "Time remaining:", timer: "38:05", message: "Men's House" },
     warning: { status: "Time remaining:", timer: "4:59", message: "Women's House" },
     critical: { status: "Time's Up!", timer: "0:00", message: "" },
