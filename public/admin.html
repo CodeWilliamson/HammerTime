@@ -30,37 +30,14 @@
       </select>
     </div>
 
-    <details id="configPanel" style="margin-bottom:2em;">
-      <summary style="font-size:1.2em;cursor:pointer;">🎨 Timer Display Config</summary>
-      <form id="configForm"
-        style="margin:1em 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1em;">
-        <div><label>Background<br><input type="color" name="background_color"></label></div>
-        <div><label>Background (Running)<br><input type="color" name="background_color_running"></label></div>
-        <div><label>Background (Warning)<br><input type="color" name="background_color_warning"></label></div>
-        <div><label>Background (Critical)<br><input type="color" name="background_color_critical"></label></div>
-        <div><label>Timer<br><input type="color" name="timer_color"></label></div>
-        <div><label>Timer (Running)<br><input type="color" name="timer_color_running"></label></div>
-        <div><label>Timer (Warning)<br><input type="color" name="timer_color_warning"></label></div>
-        <div><label>Timer (Critical)<br><input type="color" name="timer_color_critical"></label></div>
-        <div><label>Status<br><input type="color" name="status_color"></label></div>
-        <div><label>Status (Running)<br><input type="color" name="status_color_running"></label></div>
-        <div><label>Status (Warning)<br><input type="color" name="status_color_warning"></label></div>
-        <div><label>Status (Critical)<br><input type="color" name="status_color_critical"></label></div>
-        <div><label>Message (Running)<br><input type="color" name="message_color_running"></label></div>
-        <div><label>Message (Warning)<br><input type="color" name="message_color_warning"></label></div>
-        <div><label>Message (Critical)<br><input type="color" name="message_color_critical"></label></div>
-        <div><label>Timer Font Size<br><input type="text" name="timer_font_size" placeholder="e.g. 28vw or 10em"></label></div>
-        <div><label>Label Font Size<br><input type="text" name="label_font_size" placeholder="e.g. 5vw or 2em"></label></div>
-        <div><label>Message Font Size<br><input type="text" name="message_font_size" placeholder="e.g. 5vw or 2em"></label></div>
-        <div><label>Pre Draw Warning Threshold (seconds)<br><input type="text" name="pre_draw_warning_threshold" placeholder="e.g. 300"></label></div>
-        <div><label>Running Warning Threshold (seconds)<br><input type="text" name="running_warning_threshold" placeholder="e.g. 900"></label></div>
-        <div style="grid-column:1/-1;text-align:right;">
-          <button type="submit" class="save-btn">Save Config</button>
-        </div>
-      </form>
-      <div id="configStatus" style="color:green;font-size:0.95em;"></div>
-    </details>
-
+    <a class="settings-btn" href="settings.html" title="Display settings" aria-label="Display settings">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3" />
+        <path
+          d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    </a>
     <button class="add-btn" onclick="openForm()">+</button>
   </div>
 

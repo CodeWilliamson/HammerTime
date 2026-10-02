@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hammer Time Display Settings</title>
+  <link rel="stylesheet" href="settings.css" />
+  <script src="settings.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <a href="admin.html" class="back-link" aria-label="Back to calendar">&larr; Calendar</a>
+    <h1>Display Settings</h1>
+  </header>
+
+  <main>
+    <form id="configForm" novalidate>
+      <section class="card">
+        <h2>Preview</h2>
+        <div class="preview-grid" id="previewGrid"></div>
+      </section>
+
+      <section class="card">
+        <h2>Colors</h2>
+        <div class="color-matrix" id="colorMatrix"></div>
+      </section>
+
+      <section class="card">
+        <h2>Typography</h2>
+        <div class="field-row">
+          <label for="timer_font_size">Timer size</label>
+          <input type="text" id="timer_font_size" name="timer_font_size" placeholder="28vw" />
+        </div>
+        <div class="field-row">
+          <label for="label_font_size">Status size</label>
+          <input type="text" id="label_font_size" name="label_font_size" placeholder="5vw" />
+        </div>
+        <div class="field-row">
+          <label for="message_font_size">Message size</label>
+          <input type="text" id="message_font_size" name="message_font_size" placeholder="5vw" />
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Thresholds</h2>
+        <div class="field-row">
+          <label for="pre_draw_warning_threshold">Pre-draw warning</label>
+          <div class="suffix-input">
+            <input type="number" min="0" step="1" id="pre_draw_warning_threshold" name="pre_draw_warning_threshold" placeholder="300" />
+            <span>sec</span>
+          </div>
+        </div>
+        <div class="field-row">
+          <label for="running_warning_threshold">Running warning</label>
+          <div class="suffix-input">
+            <input type="number" min="0" step="1" id="running_warning_threshold" name="running_warning_threshold" placeholder="900" />
+            <span>sec</span>
+          </div>
+        </div>
+      </section>
+
+      <footer class="actionbar">
+        <span id="configStatus" role="status" aria-live="polite"></span>
+        <button type="button" id="resetBtn" class="btn btn-ghost" disabled>Discard</button>
+        <button type="submit" id="saveBtn" class="btn btn-primary" disabled>Save</button>
+      </footer>
+    </form>
+  </main>
+</body>
+
+</html>

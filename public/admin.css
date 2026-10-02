@@ -146,6 +146,29 @@
   font-family: Arial;
 }
 
+.settings-btn {
+  position: fixed;
+  top: 1.5rem;
+  right: 5rem;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #ddd;
+  color: #555;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.settings-btn:hover {
+  color: #0077cc;
+  border-color: #0077cc;
+}
+
 /* Modal styles */
 .modal {
   display: none;
