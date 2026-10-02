@@ -1,5 +1,5 @@
 const STATES = [
-  { key: "", label: "Default" },
+  { key: "", label: "Idle" },
   { key: "running", label: "Running" },
   { key: "warning", label: "Warning" },
   { key: "critical", label: "Times Up" },
