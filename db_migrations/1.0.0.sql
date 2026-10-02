@@ -23,8 +23,8 @@ CREATE TABLE
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         background_color VARCHAR(20) NOT NULL DEFAULT '#000000',
         background_color_running VARCHAR(20) NOT NULL DEFAULT '#1adb00',
-        background_color_warning VARCHAR(20) NOT NULL DEFAULT '#ffae00',
-        background_color_critical VARCHAR(20) NOT NULL DEFAULT '#ff0000',
+        background_color_warning VARCHAR(20) NOT NULL DEFAULT '#ffbe32',
+        background_color_critical VARCHAR(20) NOT NULL DEFAULT '#ff3434',
         timer_color_running VARCHAR(20) NOT NULL DEFAULT '#000000',
         timer_color_warning VARCHAR(20) NOT NULL DEFAULT '#000000',
         timer_color_critical VARCHAR(20) NOT NULL DEFAULT '#000000',
@@ -35,9 +35,9 @@ CREATE TABLE
         message_color_running VARCHAR(20) NOT NULL DEFAULT '#000000',
         message_color_warning VARCHAR(20) NOT NULL DEFAULT '#000000',
         message_color_critical VARCHAR(20) NOT NULL DEFAULT '#000000',
-        timer_font_size VARCHAR(10) NOT NULL DEFAULT '28vw',
-        label_font_size VARCHAR(10) NOT NULL DEFAULT '5vw',
-        message_font_size VARCHAR(10) NOT NULL DEFAULT '5vw',
+        timer_font_size VARCHAR(10) NOT NULL DEFAULT '32vw',
+        label_font_size VARCHAR(10) NOT NULL DEFAULT '8vw',
+        message_font_size VARCHAR(10) NOT NULL DEFAULT '8vw',
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -76,9 +76,9 @@ SELECT
     '#000000',
     '#000000',
     '#000000',
-    '28vw',
-    '5vw',
-    '5vw'
+    '32vw',
+    '8vw',
+    '8vw'
 WHERE
     NOT EXISTS (
         SELECT
