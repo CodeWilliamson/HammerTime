@@ -148,8 +148,8 @@
 
 .settings-btn {
   position: fixed;
-  top: 1.5rem;
-  right: 5rem;
+  bottom: 1.5rem;
+  right: 1.5rem;
   width: 50px;
   height: 50px;
   border-radius: 50%;
