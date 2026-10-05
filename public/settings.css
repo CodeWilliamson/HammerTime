@@ -14,7 +14,7 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Helvetica', Arial, sans-serif;
   color: var(--text);
   background: var(--page);
 }
@@ -197,6 +197,12 @@ input[type="color"]::-moz-color-swatch {
   border-radius: 6px;
   background: var(--surface);
   color: var(--text);
+}
+
+.field-row input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--accent);
 }
 
 .field-row input:focus,

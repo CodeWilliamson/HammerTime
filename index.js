@@ -8,8 +8,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-const parsedSplashSeconds = Number(process.env.ADMIN_URL_DISPLAY_SECONDS ?? 5);
-const adminUrlDisplaySeconds = Number.isFinite(parsedSplashSeconds) && parsedSplashSeconds >= 0 ? parsedSplashSeconds : 5;
+let ip = null;
 
 app.use(express.json());
 app.use(cookieParser());
@@ -21,14 +20,6 @@ app.get('/admin', (req, res) => {
 
 // Auth routes
 app.use('/auth', authRouter);
-
-app.get("/api/timer/splash", (req, res) => {
-  const ip = getHostIP();
-  res.json({
-    adminUrl: ip ? `http://${ip}/admin` : null,
-    durationSeconds: adminUrlDisplaySeconds,
-  });
-});
 
 // Existing timer state route
 app.get("/api/timer/state", (req, res) => {
@@ -44,6 +35,13 @@ app.get("/api/timer/state", (req, res) => {
       updated_at: config.updated_at
     };
   }
+
+  // check if ip has changed
+  const currentIp = getHostIP();
+  if (ip !== currentIp) {
+    ip = currentIp;
+  }
+  state.adminUrl = ip ? `http://${ip}/admin` : null;
 
   const now = new Date();
   const { lastEndedDraw, nextDraw } = getCurrentDraw();

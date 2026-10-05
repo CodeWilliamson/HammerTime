@@ -2,7 +2,8 @@ let timerState = {
   status: "idle",
   timeRemaining: 0,
   lastUpdated: Date.now(),
-  message: ""
+  message: "",
+  adminUrl: ""
 };
 
 function applyConfig(config) {
@@ -23,6 +24,7 @@ function applyConfig(config) {
       window[k] = config[k];
     }
   }
+  document.getElementById("ip-display").hidden = config.show_admin_url === 0;
 }
 
 function formatTime(seconds) {
@@ -151,39 +153,31 @@ async function syncState() {
       timerState.message = data.drawMessage || "";
     }
 
+    // admin url
+    document.getElementById("ip-display").textContent = data.adminUrl || "";
+    if (timerState.adminUrl !== data.adminUrl) {
+      showAdminUrlTemporarily(data.config.show_admin_url);
+    }
+    timerState.adminUrl = data.adminUrl || "";
+
     render();
   } catch (e) {
     console.error("Timer sync failed", e);
   }
 }
 
+// function to display admin url for 10 seconds then hide again
+function showAdminUrlTemporarily(show) {
+  document.getElementById("ip-display").hidden = false;
+  setTimeout(() => {
+    document.getElementById("ip-display").hidden = !show;
+  }, 10000);
+}
+
 function startTimer() {
   setInterval(tick, 1000);
   setInterval(syncState, 5000);
-  syncState();
+  syncState();//.then(showAdminUrlTemporarily);
 }
 
-async function showSplash() {
-  try {
-    const res = await fetch("/api/timer/splash");
-    const { adminUrl, durationSeconds } = await res.json();
-    if (!durationSeconds) return;
-
-    const splash = document.getElementById("splash");
-    document.getElementById("splash-title").textContent = adminUrl ? "HammerTime Admin" : "No Network Found";
-    document.getElementById("splash-url").textContent = adminUrl || "";
-    splash.classList.add("visible");
-
-    const bar = document.getElementById("splash-bar");
-    bar.style.transitionDuration = `${durationSeconds}s`;
-    bar.getBoundingClientRect(); // force layout so the transition starts from full width
-    bar.style.transform = "scaleX(0)";
-
-    await new Promise(resolve => setTimeout(resolve, durationSeconds * 1000));
-    splash.classList.remove("visible");
-  } catch (e) {
-    console.error("Splash failed", e);
-  }
-}
-
-showSplash().then(startTimer);
+startTimer();

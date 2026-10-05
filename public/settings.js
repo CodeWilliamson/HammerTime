@@ -145,7 +145,8 @@ function getFormData() {
   const form = document.getElementById("configForm");
   const data = {};
   for (const el of form.elements) {
-    if (el.name) data[el.name] = el.value;
+    if (!el.name) continue;
+    data[el.name] = el.type === "checkbox" ? (el.checked ? 1 : 0) : el.value;
   }
   return data;
 }
@@ -173,7 +174,9 @@ function setStatus(text, kind = "") {
 function fillForm(config) {
   const form = document.getElementById("configForm");
   for (const k in config) {
-    if (form[k] instanceof HTMLInputElement) form[k].value = config[k] ?? "";
+    if (!(form[k] instanceof HTMLInputElement)) continue;
+    if (form[k].type === "checkbox") form[k].checked = Boolean(config[k]);
+    else form[k].value = config[k] ?? "";
   }
   // Snapshot after the browser normalizes values (e.g. color hex casing), before sizes are coerced to vw
   baseline = getFormData();
