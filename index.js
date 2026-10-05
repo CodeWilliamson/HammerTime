@@ -38,6 +38,7 @@ app.get("/api/timer/state", (req, res) => {
   // check if ip has changed
   const currentIp = getHostIP();
   state.adminUrl = currentIp ? `http://${currentIp}/admin` : null;
+  // console.log(`IP: ${currentIp}`);
 
   const now = new Date();
   const { lastEndedDraw, nextDraw } = getCurrentDraw();

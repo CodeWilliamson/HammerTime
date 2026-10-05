@@ -25,7 +25,7 @@ function applyConfig(config) {
       window[k] = config[k];
     }
   }
-  document.getElementById("ip-display").hidden = config.show_admin_url === 0;
+  // document.getElementById("ip-display").hidden = config.show_admin_url === 0;
 }
 
 function formatTime(seconds) {
@@ -155,11 +155,7 @@ async function syncState() {
     }
 
     // admin url
-    document.getElementById("ip-display").textContent = data.adminUrl || "";
-    if (timerState.adminUrl !== data.adminUrl) {
-      showAdminUrlTemporarily(data.config.show_admin_url === 0);
-    }
-    timerState.adminUrl = data.adminUrl || "";
+    showAdminUrl(data);
 
     render();
   } catch (e) {
@@ -167,15 +163,22 @@ async function syncState() {
   }
 }
 
-// function to display admin url for 10 seconds then hide again
-function showAdminUrlTemporarily(show) {
-  document.getElementById("ip-display").hidden = false;
-  if (timerState.ipTimeout) {
-    clearTimeout(timerState.ipTimeout);
+// function to display admin url
+function showAdminUrl(data) {
+  document.getElementById("ip-display").textContent = data.adminUrl || "";
+  // if ip has changed
+  if (timerState.adminUrl !== data.adminUrl) {
+    document.getElementById("ip-display").hidden = false;
+    if (timerState.ipTimeout) {
+      clearTimeout(timerState.ipTimeout);
+    }
+    timerState.ipTimeout = setTimeout(() => {
+      document.getElementById("ip-display").hidden = data.config.show_admin_url === 0;
+    }, 10000);
+  }else{
+    document.getElementById("ip-display").hidden = data.config.show_admin_url === 0;
   }
-  timerState.ipTimeout = setTimeout(() => {
-    document.getElementById("ip-display").hidden = !show;
-  }, 10000);
+  timerState.adminUrl = data.adminUrl || "";
 }
 
 function startTimer() {
