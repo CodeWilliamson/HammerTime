@@ -3,7 +3,8 @@ let timerState = {
   timeRemaining: 0,
   lastUpdated: Date.now(),
   message: "",
-  adminUrl: ""
+  adminUrl: "",
+  ipTimeout: null
 };
 
 function applyConfig(config) {
@@ -169,7 +170,10 @@ async function syncState() {
 // function to display admin url for 10 seconds then hide again
 function showAdminUrlTemporarily(show) {
   document.getElementById("ip-display").hidden = false;
-  setTimeout(() => {
+  if (timerState.ipTimeout) {
+    clearTimeout(timerState.ipTimeout);
+  }
+  timerState.ipTimeout = setTimeout(() => {
     document.getElementById("ip-display").hidden = !show;
   }, 10000);
 }
@@ -177,7 +181,7 @@ function showAdminUrlTemporarily(show) {
 function startTimer() {
   setInterval(tick, 1000);
   setInterval(syncState, 5000);
-  syncState();//.then(showAdminUrlTemporarily);
+  syncState();
 }
 
 startTimer();
