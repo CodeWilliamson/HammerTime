@@ -157,7 +157,7 @@ async function syncState() {
     // admin url
     document.getElementById("ip-display").textContent = data.adminUrl || "";
     if (timerState.adminUrl !== data.adminUrl) {
-      showAdminUrlTemporarily(data.config.show_admin_url);
+      showAdminUrlTemporarily(data.config.show_admin_url === 0);
     }
     timerState.adminUrl = data.adminUrl || "";
 
