@@ -8,7 +8,6 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-let ip = null;
 
 app.use(express.json());
 app.use(cookieParser());
@@ -38,10 +37,7 @@ app.get("/api/timer/state", (req, res) => {
 
   // check if ip has changed
   const currentIp = getHostIP();
-  if (ip !== currentIp) {
-    ip = currentIp;
-  }
-  state.adminUrl = ip ? `http://${ip}/admin` : null;
+  state.adminUrl = currentIp ? `http://${currentIp}/admin` : null;
 
   const now = new Date();
   const { lastEndedDraw, nextDraw } = getCurrentDraw();
