@@ -4,7 +4,8 @@ let timerState = {
   lastUpdated: Date.now(),
   message: "",
   adminUrl: "",
-  ipTimeout: null
+  ipTimeout: null,
+  show_admin_url: true
 };
 
 function applyConfig(config) {
@@ -25,7 +26,8 @@ function applyConfig(config) {
       window[k] = config[k];
     }
   }
-  // document.getElementById("ip-display").hidden = config.show_admin_url === 0;
+  document.getElementById("ip-display").hidden = config.show_admin_url === 0
+  timerState.show_admin_url = config.show_admin_url !== 0
 }
 
 function formatTime(seconds) {
@@ -171,12 +173,13 @@ function showAdminUrl(data) {
     document.getElementById("ip-display").hidden = false;
     if (timerState.ipTimeout) {
       clearTimeout(timerState.ipTimeout);
+      timerState.ipTimeout = null;
     }
     timerState.ipTimeout = setTimeout(() => {
-      document.getElementById("ip-display").hidden = data.config.show_admin_url === 0;
+      document.getElementById("ip-display").hidden = timerState.show_admin_url === false;
     }, 10000);
-  }else{
-    document.getElementById("ip-display").hidden = data.config.show_admin_url === 0;
+  }else if(!timerState.ipTimeout){
+    document.getElementById("ip-display").hidden = timerState.show_admin_url === false;
   }
   timerState.adminUrl = data.adminUrl || "";
 }
