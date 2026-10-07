@@ -247,6 +247,13 @@ input[type="color"]:focus-visible {
   color: var(--muted);
 }
 
+.version {
+  margin: 0.5rem 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 /* Action bar */
 .actionbar {
   position: fixed;

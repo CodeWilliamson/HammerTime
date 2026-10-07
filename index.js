@@ -4,7 +4,10 @@ import authRouter, { requireAuth } from "./auth.js";
 import { getHostIP } from "./util.js";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+import { readFileSync } from "fs";
 dotenv.config();
+
+const { version } = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -15,6 +18,10 @@ app.use(express.static("public"));
 
 app.get('/admin', (req, res) => {
   res.redirect('/admin.html');
+});
+
+app.get('/api/version', (req, res) => {
+  res.json({ version });
 });
 
 // Auth routes

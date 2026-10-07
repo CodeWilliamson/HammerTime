@@ -229,8 +229,20 @@ window.addEventListener("beforeunload", (e) => {
   if (isDirty()) e.preventDefault();
 });
 
+async function loadVersion() {
+  try {
+    const res = await fetch("/api/version");
+    if (!res.ok) return;
+    const { version } = await res.json();
+    document.getElementById("appVersion").textContent = `Version ${version}`;
+  } catch {
+    // Version is informational only
+  }
+}
+
 buildColorMatrix();
 buildPreview();
+loadVersion();
 setupSizeControls();
 const form = document.getElementById("configForm");
 form.addEventListener("input", refreshState);
