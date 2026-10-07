@@ -120,6 +120,13 @@ app.get("/api/timer/state", (req, res) => {
   });
 });
 
+// Duration used to pre-fill the local timer: running/next draw, else the last one that ended
+app.get("/api/timer/closest-draw-duration", (req, res) => {
+  const { lastEndedDraw, nextDraw } = getCurrentDraw();
+  const draw = nextDraw ?? lastEndedDraw;
+  res.json({ durationMinutes: draw?.duration_minutes ?? null });
+});
+
 // CRUD API for draws
 
 app.get("/api/draws", requireAuth,(req, res) => {

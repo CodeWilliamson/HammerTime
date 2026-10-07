@@ -5,8 +5,39 @@ let timerState = {
   message: "",
   adminUrl: "",
   ipTimeout: null,
-  show_admin_url: true
+  show_admin_url: true,
+  isLocal: false
 };
+
+const LOCAL_KEY = "localTimer"; // { targetTime (ms), message }
+const LOCAL_COMPLETE_MS = 10 * 60 * 1000; // matches the central 'complete' window
+
+function getLocalTimer() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_KEY));
+  } catch {
+    return null;
+  }
+}
+
+// Overrides timerState from local storage. Returns false when there is no active local timer.
+function applyLocalTimer() {
+  const local = getLocalTimer();
+  if (local && Date.now() - local.targetTime >= LOCAL_COMPLETE_MS) {
+    localStorage.removeItem(LOCAL_KEY);
+    timerState.isLocal = false;
+    return false;
+  }
+  timerState.isLocal = !!local;
+  if (!local) return false;
+
+  timerState.targetTimestamp = local.targetTime;
+  timerState.timeRemaining = Math.floor((local.targetTime - Date.now()) / 1000);
+  timerState.status = timerState.timeRemaining > 0 ? "running" : "complete";
+  timerState.label = timerState.status === "running" ? "Time remaining:" : "Time's Up!";
+  timerState.message = local.message;
+  return true;
+}
 
 function applyConfig(config) {
   // Set CSS variables for use in app (can be used in main.css or inline)
@@ -55,6 +86,7 @@ function render() {
 
   label.textContent = timerState.label;
   message.textContent = timerState.message || "";
+  document.getElementById("local-badge").hidden = !timerState.isLocal;
 
   timer.className = "";
   let showTimer = false;
@@ -93,6 +125,10 @@ function render() {
 }
 
 function tick() {
+  if (applyLocalTimer()) {
+    render();
+    return;
+  }
   if (["pre_draw", "running", "complete"].includes(timerState.status)) {
     const now = Date.now();
     timerState.timeRemaining = Math.floor((timerState.targetTimestamp - now) / 1000);
@@ -119,6 +155,13 @@ async function syncState() {
     if (data.config) {
       applyConfig(data.config); // your custom styling logic
       lastConfigSeenAt = new Date(data.config.updated_at);
+    }
+
+    // Local timer replaces the central state, but config and admin URL still sync
+    if (applyLocalTimer()) {
+      showAdminUrl(data);
+      render();
+      return;
     }
 
     const oldStatus = timerState.status;
@@ -183,6 +226,74 @@ function showAdminUrl(data) {
   }
   timerState.adminUrl = data.adminUrl || "";
 }
+
+const localDialog = document.getElementById("local-dialog");
+const localAsk = document.getElementById("local-ask");
+const localForm = document.getElementById("local-form");
+const localDuration = document.getElementById("local-duration");
+const localMessage = document.getElementById("local-message");
+const localDelete = document.getElementById("local-delete");
+let deleteTimeout = null;
+
+function openLocalDialog() {
+  localDialog.returnValue = "";
+  localAsk.hidden = false;
+  localForm.hidden = true;
+  localForm.reset();
+  localDialog.showModal();
+}
+
+// Step 2 of the dialog: show the form, pre-filled with the closest central draw's duration
+async function showLocalForm() {
+  localAsk.hidden = true;
+  localForm.hidden = false;
+  localDuration.focus();
+  try {
+    const res = await fetch("/api/timer/closest-draw-duration");
+    const { durationMinutes } = await res.json();
+    if (durationMinutes && !localDuration.value) localDuration.value = durationMinutes;
+  } catch (e) {
+    console.error("Duration prefill failed", e);
+  }
+}
+
+function startLocalTimer() {
+  const minutes = Number(localDuration.value);
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify({
+      targetTime: Date.now() + minutes * 60000,
+      message: localMessage.value.trim()
+    }));
+  } catch (e) {
+    console.error("Could not save local timer", e);
+  }
+  tick();
+}
+
+// Reveals the small delete button briefly so it is not hit by accident
+function revealDeleteButton() {
+  localDelete.hidden = false;
+  clearTimeout(deleteTimeout);
+  deleteTimeout = setTimeout(() => { localDelete.hidden = true; }, 5000);
+}
+
+document.getElementById("local-yes").addEventListener("click", showLocalForm);
+localDialog.addEventListener("close", () => {
+  if (localDialog.returnValue === "start") startLocalTimer();
+});
+
+localDelete.addEventListener("click", () => {
+  if (!confirm("Delete the local timer and return to the main timer?")) return;
+  localStorage.removeItem(LOCAL_KEY);
+  localDelete.hidden = true;
+  syncState();
+});
+
+document.body.addEventListener("click", (e) => {
+  if (e.target.closest("dialog, #local-delete")) return;
+  if (timerState.isLocal) revealDeleteButton();
+  else openLocalDialog();
+});
 
 function startTimer() {
   setInterval(tick, 1000);
