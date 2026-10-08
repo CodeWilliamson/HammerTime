@@ -2,11 +2,9 @@
 
 **A curling rink draw timer built for Raspberry Pi kiosk displays.**
 
-HammerTime shows players and spectators the time remaining in the current draw, automatically transitioning through draw states — pre-draw countdown, active timer, and completion — based on a weekly schedule. Date-specific overrides let you easily accommodate bonspiels or other special events without changing your regular schedule.
+HammerTime shows players and spectators the time remaining in the current draw, automatically transitioning through draw states — pre-draw countdown, active timer, and completion — based on a weekly schedule (or a local timer instance if running on a tablet). Date-specific overrides let you easily accommodate bonspiels or other special events without changing your regular schedule.
 
 <a href="https://www.buymeacoffee.com/marksmakes" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
-
-[![Deploy on Raspberry Pi](https://github.com/CodeWilliamson/HammerTime/actions/workflows/main.yml/badge.svg)](https://github.com/CodeWilliamson/HammerTime/actions/workflows/main.yml)
 
 ---
 
@@ -14,13 +12,11 @@ HammerTime shows players and spectators the time remaining in the current draw, 
 
 - **Full-screen countdown timer** designed to be displayed on a large screen at the rink
 - **Automatic draw state management** — no manual intervention needed during the day
+- **Local timer** — Tap screen running timer to start a disconnected local version (tablet)
 - **Weekly recurring draws** configured once and repeated every week
 - **Date-specific overrides** for bonspiels and special events that replace or supplement the regular schedule
 - **Configurable display** — fully customizable colors and font sizes per timer state, managed through the admin panel
 - **Admin panel** with a visual weekly calendar to manage draws and overrides
-- **JWT-authenticated admin routes** to protect schedule and config changes
-- **Automatic database migrations** using semver-versioned SQL files
-- **Raspberry Pi + GitHub Actions CI/CD** — push to `main` and the rink display updates automatically
 
 ---
 
@@ -45,10 +41,10 @@ The display background and text colors change automatically as time runs low:
 
 - **Runtime:** Node.js with ES Modules
 - **Server:** Express 5
-- **Database:** SQLite via `better-sqlite3`
-- **Auth:** JWT (`jsonwebtoken`) + bcrypt (`bcryptjs`) with `httpOnly` cookies
-- **Frontend:** Vanilla HTML, CSS, and JavaScript — no framework required
-- **Deployment target:** Raspberry Pi running as a `systemd` service
+- **Database:** SQLite
+- **Auth:** JWT
+- **Frontend:** Vanilla HTML, CSS, and JavaScript
+- **Deployment model:** Raspberry Pi running as a `systemd` service
 
 ---
 
@@ -56,8 +52,9 @@ The display background and text colors change automatically as time runs low:
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22+
 - npm
+- sqlite
 
 ### Installation
 
@@ -93,7 +90,7 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 |---|---|---|
 | `PORT` | `3000` | Port the server listens on |
 | `JWT_SECRET` | `timertimertimer` | Secret key for signing JWT tokens — **change this in production** |
-| `ADMIN_URL_DISPLAY_SECONDS` | `5` | Seconds to show the admin URL on the timer display at startup (`0` disables) |
+
 
 ---
 
@@ -138,21 +135,4 @@ To run migrations manually:
 npm run migrate
 ```
 
----
 
-## API Reference
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `GET` | `/api/timer/state` | No | Current timer state (used by the display page) |
-| `GET` | `/api/timer/config` | Yes | Full timer display config |
-| `PUT` | `/api/timer/config` | Yes | Update timer display config |
-| `GET` | `/api/draws` | Yes | List all weekly draws |
-| `POST` | `/api/draws` | Yes | Create a weekly draw |
-| `PUT` | `/api/draws/:id` | Yes | Update a weekly draw |
-| `DELETE` | `/api/draws/:id` | Yes | Delete a weekly draw |
-| `POST` | `/api/draw-overrides` | Yes | Create a date-specific override |
-| `PUT` | `/api/draw-overrides/:id` | Yes | Update an override |
-| `DELETE` | `/api/draw-overrides/:id` | Yes | Delete an override |
-| `POST` | `/auth/login` | No | Log in and receive a session cookie |
-| `POST` | `/auth/change-password` | No | Change admin password |
