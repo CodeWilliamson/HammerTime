@@ -60,8 +60,8 @@ function buildPreview() {
   const grid = document.getElementById("previewGrid");
   const samples = {
     "": { status: "Next draw: 7:00 PM", timer: "", message: "" },
-    running: { status: "Time remaining:", timer: "38:05", message: "Men's House" },
-    warning: { status: "Time remaining:", timer: "4:59", message: "Women's House" },
+    running: { status: "Time remaining:", timer: "1:05:45", message: "Men's House" },
+    warning: { status: "Time remaining:", timer: "4:31:15", message: "Women's House" },
     critical: { status: "Time's Up!", timer: "0:00", message: "" },
   };
   STATES.forEach((state) => {
@@ -73,10 +73,13 @@ function buildPreview() {
       <span class="preview-tag"></span>
       <div class="p-status"></div>
       <div class="p-timer"></div>
+      <div class="p-timer-sec"></div>
       <div class="p-message"></div>`;
     tile.querySelector(".preview-tag").textContent = state.label;
     tile.querySelector(".p-status").textContent = s.status;
-    tile.querySelector(".p-timer").textContent = s.timer;
+    tile.querySelector(".p-timer").textContent = s.timer ? s.timer.split(":")[0] + ":" + s.timer.split(":")[1] : "";
+    tile.querySelector(".p-timer-sec").textContent = s.timer && s.timer.split(":")[2] ? ":" + s.timer.split(":")[2] : "";
+    tile.querySelector(".p-timer").appendChild(tile.querySelector(".p-timer-sec"));
     tile.querySelector(".p-message").textContent = s.message;
     grid.appendChild(tile);
   });
