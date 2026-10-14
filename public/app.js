@@ -259,6 +259,7 @@ async function showLocalForm() {
     const res = await fetch("/api/timer/closest-draw-duration");
     const { durationMinutes } = await res.json();
     if (durationMinutes && !localDuration.value) localDuration.value = durationMinutes;
+    else localDuration.value = "110";
   } catch (e) {
     console.error("Duration prefill failed", e);
   }
