@@ -235,19 +235,24 @@
   <div id="message"></div>
   <div id="ip-display"></div>
   <div id="local-badge" hidden>LOCAL TIMER</div>
-  <button id="local-delete" class="btn btn-ghost" hidden>Delete local timer</button>
+  <button id="local-delete" class="btn btn-ghost" hidden>
+    <img src="delete-icon.png" alt="Delete" style="width: 4em; height: 4em; vertical-align: middle; margin-right: 0.3em;">
+    <!-- Delete local timer -->
+  </button>
 
   <dialog id="local-dialog">
-    <form id="local-ask" method="dialog">
+    <!-- <form id="local-ask" method="dialog">
       <p>Start a local timer on this screen?</p>
       <div class="dialog-actions">
         <button type="button" id="local-yes" class="btn btn-primary">Yes</button>
         <button value="no" class="btn btn-ghost">No</button>
       </div>
-    </form>
+    </form> -->
+    <!-- dialog title -->
+    <h1>Start a Local Timer</h1>
     <form id="local-form" method="dialog" hidden>
       <label>Game duration (minutes)
-        <input id="local-duration" type="number" min="1" max="600" required>
+        <input id="local-duration" type="number" min="1" max="180" required>
       </label>
       <label>Message (optional)
         <input id="local-message" type="text" maxlength="100">

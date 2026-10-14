@@ -36,6 +36,7 @@ function applyLocalTimer() {
   timerState.status = timerState.timeRemaining > 0 ? "running" : "complete";
   timerState.label = timerState.status === "running" ? "Time remaining:" : "Time's Up!";
   timerState.message = local.message;
+  localDelete.hidden = !timerState.isLocal;
   return true;
 }
 
@@ -228,24 +229,30 @@ function showAdminUrl(data) {
 }
 
 const localDialog = document.getElementById("local-dialog");
-const localAsk = document.getElementById("local-ask");
+// const localAsk = document.getElementById("local-ask");
 const localForm = document.getElementById("local-form");
 const localDuration = document.getElementById("local-duration");
 const localMessage = document.getElementById("local-message");
 const localDelete = document.getElementById("local-delete");
 let deleteTimeout = null;
 
-function openLocalDialog() {
-  localDialog.returnValue = "";
-  localAsk.hidden = false;
-  localForm.hidden = true;
-  localForm.reset();
-  localDialog.showModal();
-}
+// function openLocalDialog() {
+//   localDialog.returnValue = "";
+//   localAsk.hidden = false;
+//   localForm.hidden = true;
+//   localForm.reset();
+//   localDialog.showModal();
+// }
 
 // Step 2 of the dialog: show the form, pre-filled with the closest central draw's duration
 async function showLocalForm() {
-  localAsk.hidden = true;
+  localDialog.returnValue = "";
+  // localAsk.hidden = false;
+  localForm.hidden = true;
+  localForm.reset();
+  localDialog.showModal();
+
+  // localAsk.hidden = true;
   localForm.hidden = false;
   localDuration.focus();
   try {
@@ -264,6 +271,7 @@ function startLocalTimer() {
       targetTime: Date.now() + minutes * 60000,
       message: localMessage.value.trim()
     }));
+    revealDeleteButton();
   } catch (e) {
     console.error("Could not save local timer", e);
   }
@@ -274,10 +282,10 @@ function startLocalTimer() {
 function revealDeleteButton() {
   localDelete.hidden = false;
   clearTimeout(deleteTimeout);
-  deleteTimeout = setTimeout(() => { localDelete.hidden = true; }, 5000);
+  //deleteTimeout = setTimeout(() => { localDelete.hidden = true; }, 5000);
 }
 
-document.getElementById("local-yes").addEventListener("click", showLocalForm);
+// document.getElementById("local-yes").addEventListener("click", showLocalForm);
 localDialog.addEventListener("close", () => {
   if (localDialog.returnValue === "start") startLocalTimer();
 });
@@ -291,8 +299,8 @@ localDelete.addEventListener("click", () => {
 
 document.body.addEventListener("click", (e) => {
   if (e.target.closest("dialog, #local-delete")) return;
-  if (timerState.isLocal) revealDeleteButton();
-  else openLocalDialog();
+  // if (timerState.isLocal) revealDeleteButton();
+  if(!timerState.isLocal) showLocalForm();
 });
 
 function startTimer() {
