@@ -35,7 +35,7 @@ function applyLocalTimer() {
   timerState.timeRemaining = Math.floor((local.targetTime - Date.now()) / 1000);
   timerState.status = timerState.timeRemaining > 0 ? "running" : "complete";
   timerState.label = timerState.status === "running" ? "Time remaining:" : "Time's Up!";
-  // timerState.message = local.message;
+  timerState.message = local.message;
   localDelete.hidden = !timerState.isLocal;
   return true;
 }
@@ -260,7 +260,7 @@ function startLocalTimer() {
   try {
     localStorage.setItem(LOCAL_KEY, JSON.stringify({
       targetTime: Date.now() + minutes * 60000,
-      // message: localMessage.value.trim()
+      message: localMessage?.value?.trim()
     }));
     revealDeleteButton();
   } catch (e) {
