@@ -217,11 +217,13 @@ async function saveConfig(e) {
     return;
   }
   if (res.ok) {
-    await loadConfig();
     setStatus("Saved", "success");
     setTimeout(() => {
       if (document.getElementById("configStatus").dataset.kind === "success") setStatus("");
     }, 2000);
+    // The server broadcasts the updated config over WS; apply it when it arrives.
+    // Fall back to re-fetching if no broadcast arrives within 2 seconds.
+    setTimeout(loadConfig, 2000);
   } else {
     setStatus("Error saving settings.", "error");
     saveBtn.disabled = false;
@@ -254,4 +256,51 @@ document.getElementById("resetBtn").addEventListener("click", () => {
   fillForm(savedConfig);
   setStatus("");
 });
+
+// --- WebSocket connection: receive live config updates from the server ---
+let ws = null;
+let reconnectTimer = null;
+let reconnectDelay = 1000;
+
+function connectWS() {
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+  ws.onopen = () => {
+    reconnectDelay = 1000;
+  };
+
+  ws.onmessage = (event) => {
+    let msg;
+    try {
+      msg = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    if (msg.type === "config") {
+      // Apply config pushed by the server (e.g. after another admin saved changes)
+      fillForm(msg);
+      refreshState();
+    }
+  };
+
+  ws.onclose = () => {
+    ws = null;
+    scheduleReconnect();
+  };
+
+  ws.onerror = () => {
+    ws.close();
+  };
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(() => {
+    connectWS();
+    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+  }, reconnectDelay);
+}
+
+connectWS();
 loadConfig();

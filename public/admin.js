@@ -1,6 +1,17 @@
 const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 let currentDayIndex = new Date().getDay();
 
+// Render the draw calendar from a { drawsForWeek, futureOverrides } payload.
+// Used both by the initial REST fetch and by live WebSocket updates.
+function renderDraws(data) {
+  const draws = data.drawsForWeek || data; // fallback for legacy
+  const grouped = groupByDay(draws);
+  renderTabs(grouped);
+  renderCalendar(grouped);
+  window._lastFutureOverrides = data.futureOverrides || [];
+  renderFutureOverrides(window._lastFutureOverrides);
+}
+
 async function loadDraws() {
   const res = await fetch("/api/draws", {
     credentials: "include",
@@ -10,13 +21,7 @@ async function loadDraws() {
     return;
   }
   const result = await res.json();
-  // result: { drawsForWeek, futureOverrides }
-  const draws = result.drawsForWeek || result; // fallback for legacy
-  const grouped = groupByDay(draws);
-  renderTabs(grouped);
-  renderCalendar(grouped);
-  window._lastFutureOverrides = result.futureOverrides || [];
-  renderFutureOverrides(window._lastFutureOverrides);
+  renderDraws(result);
 }
 
 function groupByDay(draws) {
@@ -241,7 +246,9 @@ async function deleteDraw() {
     if (!res.ok) {
       alert("Failed to delete draw.");
     }
-    loadDraws(); // reload the UI
+    // The server broadcasts the updated schedule over WS; re-render when it arrives.
+    // Fall back to re-fetching if no broadcast arrives within 2 seconds.
+    setTimeout(loadDraws, 2000);
     document.getElementById("formModal").classList.remove("active");
   }
 }
@@ -309,7 +316,9 @@ async function saveDraw(e) {
     });
   }
   closeForm();
-  loadDraws();
+  // The server broadcasts the updated schedule over WS; re-render when it arrives.
+  // Fall back to re-fetching if no broadcast arrives within 2 seconds.
+  setTimeout(loadDraws, 2000);
 }
 
 function getCurrentWeekDays() {
@@ -366,4 +375,50 @@ window.addEventListener("resize", loadDraws);
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("drawForm").addEventListener("submit", saveDraw);
 });
+
+// --- WebSocket connection: receive live draw-schedule updates from the server ---
+let ws = null;
+let reconnectTimer = null;
+let reconnectDelay = 1000;
+
+function connectWS() {
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+  ws.onopen = () => {
+    reconnectDelay = 1000;
+  };
+
+  ws.onmessage = (event) => {
+    let msg;
+    try {
+      msg = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    if (msg.type === "draws") {
+      // Apply schedule pushed by the server (e.g. after another admin saved changes)
+      renderDraws(msg);
+    }
+  };
+
+  ws.onclose = () => {
+    ws = null;
+    scheduleReconnect();
+  };
+
+  ws.onerror = () => {
+    ws.close();
+  };
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(() => {
+    connectWS();
+    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+  }, reconnectDelay);
+}
+
+connectWS();
 loadDraws();

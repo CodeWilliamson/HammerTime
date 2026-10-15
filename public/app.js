@@ -136,14 +136,85 @@ function tick() {
     render();
 
     if (timerState.timeRemaining <= 0) {
-      syncState(); // force refresh
+      fetchState(); // force refresh from server
     }
   }
 }
 
-let previousStatus = null; // Add this above syncState()
+// Last time the client saw a config update (used to ask the server for deltas on REST fallback)
 let lastConfigSeenAt = null;
-async function syncState() {
+
+// --- WebSocket connection (replaces the 5-second poll) ---
+let ws = null;
+let reconnectTimer = null;
+let reconnectDelay = 1000;
+
+function connectWS() {
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+  ws.onopen = () => {
+    reconnectDelay = 1000;
+    // The server sends a "hello" message containing the full current state.
+  };
+
+  ws.onmessage = (event) => {
+    let msg;
+    try {
+      msg = JSON.parse(event.data);
+    } catch {
+      return; // ignore malformed messages
+    }
+    switch (msg.type) {
+      case "hello":
+        if (msg.config) {
+          applyConfig(msg.config);
+          lastConfigSeenAt = new Date(msg.config.updated_at || Date.now());
+        }
+        applyTimerState(msg.timer_state);
+        break;
+      case "timer_state":
+        applyTimerState(msg);
+        break;
+      case "config":
+        applyConfig(msg);
+        lastConfigSeenAt = new Date(msg.updated_at || Date.now());
+        break;
+      case "pong":
+        // heartbeat reply — nothing to do
+        break;
+    }
+  };
+
+  ws.onclose = () => {
+    ws = null;
+    scheduleReconnect();
+  };
+
+  ws.onerror = () => {
+    ws.close(); // triggers onclose → reconnect
+  };
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(() => {
+    connectWS();
+    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+  }, reconnectDelay);
+}
+
+function sendPing() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "ping" }));
+  }
+}
+
+// Heartbeat: keeps the WS connection open and detects dead peers
+setInterval(sendPing, 30000);
+
+// One-shot REST fetch (priming / fallback when WS is unavailable)
+async function fetchState() {
   try {
     const params = new URLSearchParams();
     if (lastConfigSeenAt) {
@@ -157,56 +228,52 @@ async function syncState() {
       applyConfig(data.config); // your custom styling logic
       lastConfigSeenAt = new Date(data.config.updated_at);
     }
-
-    // Local timer replaces the central state, but config and admin URL still sync
-    if (applyLocalTimer()) {
-      showAdminUrl(data);
-      render();
-      return;
-    }
-
-    const oldStatus = timerState.status;
-
-    timerState.status = data.status;
-    timerState.timeRemaining = data.timeRemaining ?? 0;
-    timerState.lastUpdated = Date.now();
-    timerState.targetTimestamp = new Date(data.targetTime).getTime();
-
-    // ✅ Clamp to prevent flickering to 'waiting' from pre_draw/running
-    if (oldStatus === "pre_draw" && data.status === "waiting" && (new Date(data.nextDrawStart) - Date.now()) <= 2000) {
-      console.log("Suppressing flicker to 'waiting'");
-      console.log(`${new Date(data.nextDrawStart) - Date.now()}`);
-      setTimeout(() => syncState(), 1000);
-      return;
-    }
-
-    // Detect transition from pre_draw to running
-    // if ((oldStatus === "pre_draw" || oldStatus === "waiting") && data.status === "running") {
-    //   document.getElementById("firstcall").play().catch(err => {
-    //     console.warn("Autoplay failed:", err);
-    //   });
-    // }
-
-    if (data.status === "waiting") {
-      timerState.label = `Next draw: ${formatTimeOfDay(new Date(data.nextDrawStart))}`;
-      timerState.message = data.nextDrawMessage || "";
-    } else {
-      timerState.label = {
-        pre_draw: "Draw starts in:",
-        running: "Time remaining:",
-        complete: "Time's Up!"
-      }[data.status] || "No more draws today";
-
-      timerState.message = data.drawMessage || "";
-    }
-
-    // admin url
-    showAdminUrl(data);
-
-    render();
+    applyTimerState(data);
   } catch (e) {
     console.error("Timer sync failed", e);
   }
+}
+
+// Apply a timer state object (from WS or REST) to the UI
+function applyTimerState(data) {
+  // Local timer replaces the central state, but config and admin URL still sync
+  if (applyLocalTimer()) {
+    showAdminUrl(data);
+    render();
+    return;
+  }
+
+  const oldStatus = timerState.status;
+
+  timerState.status = data.status;
+  timerState.timeRemaining = data.timeRemaining ?? 0;
+  timerState.lastUpdated = Date.now();
+  timerState.targetTimestamp = new Date(data.targetTime).getTime();
+
+  // Clamp to prevent flickering to 'waiting' from pre_draw/running
+  if (oldStatus === "pre_draw" && data.status === "waiting" && (new Date(data.nextDrawStart) - Date.now()) <= 2000) {
+    console.log("Suppressing flicker to 'waiting'");
+    setTimeout(fetchState, 1000);
+    return;
+  }
+
+  if (data.status === "waiting") {
+    timerState.label = `Next draw: ${formatTimeOfDay(new Date(data.nextDrawStart))}`;
+    timerState.message = data.nextDrawMessage || "";
+  } else {
+    timerState.label = {
+      pre_draw: "Draw starts in:",
+      running: "Time remaining:",
+      complete: "Time's Up!",
+    }[data.status] || "No more draws today";
+
+    timerState.message = data.drawMessage || "";
+  }
+
+  // admin url
+  showAdminUrl(data);
+
+  render();
 }
 
 // function to display admin url
@@ -285,7 +352,7 @@ localDelete.addEventListener("click", () => {
   if (!confirm("Delete the local timer and return to the main timer?")) return;
   localStorage.removeItem(LOCAL_KEY);
   localDelete.hidden = true;
-  syncState();
+  fetchState();
 });
 
 document.body.addEventListener("click", (e) => {
@@ -296,8 +363,8 @@ document.body.addEventListener("click", (e) => {
 
 function startTimer() {
   setInterval(tick, 1000);
-  setInterval(syncState, 5000);
-  syncState();
+  connectWS();   // open WS; replaces the 5-second poll
+  fetchState();  // prime with REST in case WS is slow to connect
 }
 
 startTimer();

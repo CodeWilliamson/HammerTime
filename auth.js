@@ -5,7 +5,7 @@ import { getUserByUsername, updatePassword } from "./db.js";
 
 const router = express.Router();
 
-const SECRET = process.env.JWT_SECRET || "timertimertimer";
+export const SECRET = process.env.JWT_SECRET || "timertimertimer";
 
 // Login route
 router.post("/login", (req, res) => {
