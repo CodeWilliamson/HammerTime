@@ -196,7 +196,7 @@
     #local-dialog label {
       display: block;
       margin-bottom: 0.9rem;
-      font-size: 0.95rem;
+      font-size: 1.25rem;
     }
 
     #local-dialog input {
@@ -205,7 +205,7 @@
       box-sizing: border-box;
       margin-top: 0.35rem;
       padding: 0.45rem 0.6rem;
-      font-size: 0.95rem;
+      font-size: 1.25rem;
       border: 1px solid #e5e7eb;
       border-radius: 6px;
       color: #1f2328;
@@ -241,22 +241,21 @@
   </button>
 
   <dialog id="local-dialog">
-    <!-- <form id="local-ask" method="dialog">
-      <p>Start a local timer on this screen?</p>
-      <div class="dialog-actions">
-        <button type="button" id="local-yes" class="btn btn-primary">Yes</button>
-        <button value="no" class="btn btn-ghost">No</button>
-      </div>
-    </form> -->
     <!-- dialog title -->
     <h1>Start a Local Timer</h1>
     <form id="local-form" method="dialog" hidden>
-      <label>Game duration (minutes)
-        <input id="local-duration" type="number" min="1" max="180" required>
-      </label>
-      <label>Message (optional)
+      <!-- input with plus and minus to go up and down by 5 minutes -->
+      
+      <label>Game duration (minutes)</label>
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+        <input type="button" value="-" onclick="document.getElementById('local-duration').stepDown(5)" class="btn">
+        <input id="local-duration" type="number" min="1" max="180" required disabled>
+        <input type="button" value="+" onclick="document.getElementById('local-duration').stepUp(5)" class="btn">
+
+      </div>
+      <!-- <label>Message (optional)
         <input id="local-message" type="text" maxlength="100">
-      </label>
+      </label> -->
       <div class="dialog-actions">
         <button value="start" class="btn btn-primary">Start</button>
         <button value="cancel" formnovalidate class="btn btn-ghost">Cancel</button>

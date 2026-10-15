@@ -236,25 +236,15 @@ const localMessage = document.getElementById("local-message");
 const localDelete = document.getElementById("local-delete");
 let deleteTimeout = null;
 
-// function openLocalDialog() {
-//   localDialog.returnValue = "";
-//   localAsk.hidden = false;
-//   localForm.hidden = true;
-//   localForm.reset();
-//   localDialog.showModal();
-// }
 
-// Step 2 of the dialog: show the form, pre-filled with the closest central draw's duration
+// show the form, pre-filled with the closest central draw's duration
 async function showLocalForm() {
   localDialog.returnValue = "";
-  // localAsk.hidden = false;
   localForm.hidden = true;
   localForm.reset();
   localDialog.showModal();
 
-  // localAsk.hidden = true;
   localForm.hidden = false;
-  localDuration.focus();
   try {
     const res = await fetch("/api/timer/closest-draw-duration");
     const { durationMinutes } = await res.json();
