@@ -76,6 +76,7 @@ app.get("/api/timer/state", (req, res) => {
         drawLabel: nextDraw.title,
         drawMessage: nextDraw.message ?? null,
         targetTime: drawStart.toISOString(),
+        endTime: drawEnd.toISOString(),
         ...state,
       });
     }
