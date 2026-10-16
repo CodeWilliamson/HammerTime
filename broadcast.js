@@ -10,14 +10,31 @@ export function initBroadcast(httpServer) {
   wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
   wss.on("connection", (ws) => {
+    // log connection ONLY on debug flag
+    if (process.env.DEBUG) {
+      console.log("New WebSocket connection established.");
+    }
     clients.add(ws);
-    ws.on("close", () => clients.delete(ws));
-    ws.on("error", () => clients.delete(ws));
+    ws.on("close", () => {
+      if (process.env.DEBUG) {
+        console.log("WebSocket connection closed.");
+      }
+      clients.delete(ws);
+    });
+    ws.on("error", () => {
+      if (process.env.DEBUG) {
+        console.log("WebSocket connection error.");
+      }
+      clients.delete(ws);
+    });
 
     // Reply to client heartbeats so the client knows the connection is alive
     ws.on("message", (data) => {
       try {
         const msg = JSON.parse(data.toString());
+        if (process.env.DEBUG) {
+          console.log("Received message from client:", msg);
+        }
         if (msg.type === "ping") {
           ws.send(JSON.stringify({ type: "pong" }));
         }
@@ -51,6 +68,9 @@ export function initBroadcast(httpServer) {
 // Stringify and send a message to every connected client.
 function broadcast(msg) {
   const data = JSON.stringify(msg);
+  if (process.env.DEBUG) {
+    console.log(`Broadcasting message to ${clients.size} clients:`, msg);
+  }
   clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(data);
