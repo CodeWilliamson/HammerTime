@@ -1,6 +1,6 @@
 import { WebSocketServer } from "ws";
 import { getTimerState } from "./timerState.js";
-import { getFullConfig, getAllDraws } from "./db.js";
+import { getFullConfig } from "./db.js";
 
 const clients = new Set();
 let wss = null;
@@ -86,10 +86,4 @@ export function broadcastTimerState() {
 // Push the latest display config to all connected clients.
 export function broadcastConfig() {
   broadcast({ type: "config", ...getFullConfig() });
-}
-
-// Push the latest draw schedule to all connected clients.
-export function broadcastDraws() {
-  const { drawsForWeek, futureOverrides } = getAllDraws();
-  broadcast({ type: "draws", drawsForWeek, futureOverrides });
 }

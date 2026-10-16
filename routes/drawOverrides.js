@@ -4,7 +4,7 @@ import {
   updateDrawOverride,
   deleteDrawOverride,
 } from "../db.js";
-import { broadcastDraws, broadcastTimerState } from "../broadcast.js";
+import { broadcastTimerState } from "../broadcast.js";
 import { requireAuth } from "../auth.js";
 
 const router = express.Router();
@@ -13,7 +13,6 @@ const router = express.Router();
 router.post("/", requireAuth, (req, res) => {
   try {
     const id = addDrawOverride(req.body);
-    broadcastDraws();
     broadcastTimerState();
     res.status(201).json({ id });
   } catch (e) {
@@ -28,7 +27,6 @@ router.put("/:id", requireAuth, (req, res) => {
     if (!updated) {
       return res.status(404).json({ error: "Override draw not found" });
     }
-    broadcastDraws();
     broadcastTimerState();
     res.status(204).end();
   } catch (e) {
@@ -43,7 +41,6 @@ router.delete("/:id", requireAuth, (req, res) => {
     if (!deleted) {
       return res.status(404).json({ error: "Draw not found" });
     }
-    broadcastDraws();
     broadcastTimerState();
     res.status(204).end();
   } catch (e) {

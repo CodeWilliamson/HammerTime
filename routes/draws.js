@@ -6,7 +6,7 @@ import {
   updateDraw,
   deleteDraw,
 } from "../db.js";
-import { broadcastDraws, broadcastTimerState } from "../broadcast.js";
+import { broadcastTimerState } from "../broadcast.js";
 import { requireAuth } from "../auth.js";
 
 const router = express.Router();
@@ -31,7 +31,6 @@ router.get("/:id", requireAuth, (req, res) => {
 router.post("/", requireAuth, (req, res) => {
   try {
     const id = addDraw(req.body);
-    broadcastDraws();
     broadcastTimerState();
     res.status(201).json({ id });
   } catch (e) {
@@ -43,7 +42,6 @@ router.post("/", requireAuth, (req, res) => {
 router.put("/:id", requireAuth, (req, res) => {
   try {
     updateDraw(req.params.id, req.body);
-    broadcastDraws();
     broadcastTimerState();
     res.status(204).end();
   } catch (e) {
@@ -58,7 +56,6 @@ router.delete("/:id", requireAuth, (req, res) => {
     if (!deleted) {
       return res.status(404).json({ error: "Draw not found" });
     }
-    broadcastDraws();
     broadcastTimerState();
     res.status(204).end();
   } catch (e) {
