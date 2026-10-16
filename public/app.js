@@ -132,12 +132,29 @@ function tick() {
   }
   if (["pre_draw", "running", "complete"].includes(timerState.status)) {
     const now = Date.now();
-    timerState.timeRemaining = Math.floor((timerState.targetTimestamp - now) / 1000);
-    render();
 
-    if (timerState.timeRemaining <= 0) {
-      fetchState(); // force refresh from server
+    // Handle status transitions at the boundary before computing timeRemaining,
+    // so that pre_draw -> running restarts the countdown at drawEnd instead of
+    // leaving timeRemaining at 0 (which would trigger the "critical" styling
+    // for one tick).
+    if (timerState.status === "pre_draw" && now >= timerState.targetTimestamp) {
+      timerState.status = "running";
+      timerState.label = "Time remaining:";
+      if (timerState.endTimestamp) {
+        timerState.targetTimestamp = timerState.endTimestamp;
+      }
+    } else if (timerState.status === "running" && now >= timerState.targetTimestamp) {
+      timerState.status = "complete";
+      timerState.label = "Time's Up!";
     }
+    // "complete" stays "complete"
+
+    // tick() is the sole writer of timeRemaining during an active countdown.
+    // syncState() only updates targetTimestamp; letting both loops write
+    // timeRemaining was the root cause of the seconds flickering every 5s.
+    timerState.timeRemaining = Math.max(Math.floor((timerState.targetTimestamp - now) / 1000), 0);
+
+    render();
   }
 }
 
@@ -243,19 +260,34 @@ function applyTimerState(data) {
     return;
   }
 
-  const oldStatus = timerState.status;
+    const oldStatus = timerState.status;
+    const statusChanged = data.status !== oldStatus;
 
-  timerState.status = data.status;
-  timerState.timeRemaining = data.timeRemaining ?? 0;
-  timerState.lastUpdated = Date.now();
-  timerState.targetTimestamp = new Date(data.targetTime).getTime();
+    timerState.status = data.status;
+    timerState.lastUpdated = Date.now();
+    // Always adopt the authoritative target timestamp from the server so that
+    // duration changes (e.g. a draw is extended/shortened) are picked up.
+    // tick() computes timeRemaining from targetTimestamp each second, so this
+    // stays smooth — no 5s snap-jump of the seconds.
+    timerState.targetTimestamp = new Date(data.targetTime).getTime();
+    // Remember the draw's end time so tick() can switch the countdown target
+    // when pre_draw transitions to running (no server round-trip needed).
+    if (data.endTime) {
+      timerState.endTimestamp = new Date(data.endTime).getTime();
+    }
 
-  // Clamp to prevent flickering to 'waiting' from pre_draw/running
-  if (oldStatus === "pre_draw" && data.status === "waiting" && (new Date(data.nextDrawStart) - Date.now()) <= 2000) {
-    console.log("Suppressing flicker to 'waiting'");
-    setTimeout(fetchState, 1000);
-    return;
-  }
+    // Only initialize timeRemaining from the server when the phase changes.
+    // During an active countdown, tick() owns timeRemaining (no flicker).
+    if (statusChanged) {
+      timerState.timeRemaining = Math.max(data.timeRemaining ?? 0, 0);
+    }
+
+    // Detect transition from pre_draw to running
+    // if ((oldStatus === "pre_draw" || oldStatus === "waiting") && data.status === "running") {
+    //   document.getElementById("firstcall").play().catch(err => {
+    //     console.warn("Autoplay failed:", err);
+    //   });
+    // }
 
   if (data.status === "waiting") {
     timerState.label = `Next draw: ${formatTimeOfDay(new Date(data.nextDrawStart))}`;
