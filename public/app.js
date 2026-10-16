@@ -165,10 +165,20 @@ let lastConfigSeenAt = null;
 let ws = null;
 let reconnectTimer = null;
 let reconnectDelay = 1000;
+let lastMessageAt = Date.now();
+
+// Liveness watchdog: on flaky networks a dead TCP connection often never
+// fires onclose, leaving the kiosk on a zombie socket missing broadcasts.
+// The server pings back every 30s (pong) and broadcasts state every 60s,
+// so ~70s of silence means the connection is dead — force a close so the
+// reconnect logic takes over.
+const WS_STALE_MS = 70_000;
+const WS_WATCHDOG_INTERVAL_MS = 15_000;
 
 function connectWS() {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   ws = new WebSocket(`${protocol}//${location.host}/ws`);
+  lastMessageAt = Date.now();
 
   ws.onopen = () => {
     reconnectDelay = 1000;
@@ -176,6 +186,7 @@ function connectWS() {
   };
 
   ws.onmessage = (event) => {
+    lastMessageAt = Date.now();
     let msg;
     try {
       msg = JSON.parse(event.data);
@@ -229,6 +240,13 @@ function sendPing() {
 
 // Heartbeat: keeps the WS connection open and detects dead peers
 setInterval(sendPing, 30000);
+
+// Watchdog: kick silent (zombie) connections so onclose -> reconnect kicks in
+setInterval(() => {
+  if (ws && Date.now() - lastMessageAt > WS_STALE_MS) {
+    ws.close();
+  }
+}, WS_WATCHDOG_INTERVAL_MS);
 
 // One-shot REST fetch (priming / fallback when WS is unavailable)
 async function fetchState() {

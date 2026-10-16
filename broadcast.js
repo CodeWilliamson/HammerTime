@@ -39,6 +39,13 @@ export function initBroadcast(httpServer) {
       })
     );
   });
+
+  // Time-driven state transitions (running -> complete, complete -> next draw,
+  // etc.) are not tied to any REST write, so nothing else would push them.
+  // Periodically re-broadcast the computed state so clients always converge
+  // (worst case: ~60s of stale display at a draw boundary). Clients only
+  // adopt timeRemaining on a status change, so regular pushes are harmless.
+  setInterval(broadcastTimerState, 60_000);
 }
 
 // Stringify and send a message to every connected client.
