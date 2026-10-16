@@ -299,21 +299,20 @@ async function saveDraw(e) {
     duration_minutes: duration,
   };
   const endpoint = overrideDate ? `/api/draw-overrides/${form.id.value}` : `/api/draws/${form.id.value}`;
-  if (form.id.value) {
-    // Use correct endpoint for edit based on draw type
-    await fetch(endpoint, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-  } else {
-    await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
+  const res = await fetch(endpoint, {
+    method: form.id.value ? "PUT" : "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    let errMsg = "Failed to save draw.";
+    try {
+      const err = await res.json();
+      if (err.error) errMsg = err.error;
+    } catch {}
+    alert(errMsg);
+    return;
   }
   closeForm();
   // The server broadcasts the updated schedule over WS; re-render when it arrives.

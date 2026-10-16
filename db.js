@@ -69,6 +69,50 @@ function parseTimeToMinutes(timeStr) {
   return h * 60 + m;
 }
 
+// Return true if two time ranges (HH:MM + duration in minutes) overlap.
+// Ranges that only touch at the edges (end == start) are not considered overlapping.
+function timeRangesOverlap(startA, durationA, startB, durationB) {
+  const aStart = parseTimeToMinutes(startA);
+  const aEnd = aStart + durationA;
+  const bStart = parseTimeToMinutes(startB);
+  const bEnd = bStart + durationB;
+  return aStart < bEnd && aEnd > bStart;
+}
+
+/**
+ * Validate that a weekly draw does not overlap any OTHER weekly draw on the
+ * same day of the week. Pass excludeId when editing so a draw never conflicts
+ * with itself. Throws if an overlap is found so the route layer can return 400.
+ *
+ * Note: override draws are intentionally NOT checked here — overrides are
+ * allowed to overlap weekly draws (they take precedence on their date).
+ */
+export function validateWeeklyDraw(draw, excludeId = null) {
+  const others = db
+    .prepare("SELECT * FROM draws WHERE day_of_week = ? ORDER BY start_time ASC")
+    .all(draw.day_of_week);
+
+  const overlapping = others.find((other) => {
+    if (excludeId != null && other.id === Number(excludeId)) return false;
+    return timeRangesOverlap(
+      draw.start_time,
+      draw.duration_minutes,
+      other.start_time,
+      other.duration_minutes
+    );
+  });
+
+  if (overlapping) {
+    throw new Error(
+      `This draw overlaps with "${overlapping.title}" on ${
+        draw.day_of_week
+      } at ${overlapping.start_time} (${
+        overlapping.duration_minutes
+      } min). Choose a different time or day.`
+    );
+  }
+}
+
 // Get all timer_config fields (for config UI)
 export function getFullConfig() {
   const stmt = db.prepare(`SELECT * FROM timer_config ORDER BY updated_at DESC LIMIT 1`);
@@ -123,6 +167,9 @@ export function addDrawOverride(draw) {
 }
 
 export function addDraw(draw) {
+    // Prevent weekly draws from overlapping other weekly draws
+    validateWeeklyDraw(draw);
+
     // Save as recurring draw
     const stmt = db.prepare(`
       INSERT INTO draws (day_of_week, title, message, start_time, duration_minutes)
@@ -133,6 +180,9 @@ export function addDraw(draw) {
 }
 
 export function updateDraw(id, updates) {
+  // Prevent weekly draws from overlapping other weekly draws (exclude self)
+  validateWeeklyDraw(updates, id);
+
   const stmt = db.prepare(`
     UPDATE draws
     SET day_of_week = ?, title = ?, message = ?, start_time = ?, duration_minutes = ?
