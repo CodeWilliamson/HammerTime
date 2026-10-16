@@ -37,6 +37,7 @@ export function getTimerState() {
         drawLabel: nextDraw.title,
         drawMessage: nextDraw.message ?? null,
         targetTime: drawStart.toISOString(),
+        endTime: drawEnd.toISOString(),
         ...state,
       };
     }
