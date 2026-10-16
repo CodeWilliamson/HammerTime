@@ -17,12 +17,10 @@ export function getTimerState() {
   if (nextDraw) {
     const { drawStart, drawEnd } = nextDraw;
     const secondsUntilStart = Math.floor((drawStart - now) / 1000);
-    const secondsUntilEnd = Math.floor((drawEnd - now) / 1000);
 
     if (now >= drawStart && now < drawEnd) {
       return {
         status: "running",
-        timeRemaining: secondsUntilEnd,
         drawLabel: nextDraw.title,
         drawMessage: nextDraw.message ?? null,
         targetTime: drawEnd.toISOString(),
@@ -33,7 +31,6 @@ export function getTimerState() {
     if (secondsUntilStart <= 600 && secondsUntilStart > 0) {
       return {
         status: "pre_draw",
-        timeRemaining: secondsUntilStart,
         drawLabel: nextDraw.title,
         drawMessage: nextDraw.message ?? null,
         targetTime: drawStart.toISOString(),
@@ -49,7 +46,6 @@ export function getTimerState() {
     if (secondsSinceEnd <= 600) {
       return {
         status: "complete",
-        timeRemaining: 0,
         drawLabel: lastEndedDraw.title,
         drawMessage: lastEndedDraw.message ?? null,
         targetTime: lastEndedDraw.drawEnd.toISOString(),
@@ -62,7 +58,6 @@ export function getTimerState() {
   if (nextDraw) {
     return {
       status: "waiting",
-      timeRemaining: 0,
       nextDrawStart: nextDraw.drawStart.toISOString(),
       targetTime: nextDraw.drawStart.toISOString(),
       nextDrawTitle: nextDraw.title,
@@ -74,7 +69,6 @@ export function getTimerState() {
   // Case 4: no draws today
   return {
     status: "idle",
-    timeRemaining: 0,
     drawLabel: "No draw scheduled",
     drawMessage: null,
     targetTime: null,

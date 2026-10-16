@@ -1,7 +1,7 @@
 let timerState = {
   status: "idle",
-  timeRemaining: 0,
   lastUpdated: Date.now(),
+  timeRemaining: null,
   message: "",
   adminUrl: "",
   ipTimeout: null,
@@ -112,7 +112,7 @@ function render() {
     }else{
       document.body.classList.remove("critical");
     }
-    timer.innerHTML = formatTime(Math.max(timerState.timeRemaining, 0));
+    timer.innerHTML = timerState.timeRemaining !=null ? formatTime(Math.max(timerState.timeRemaining, 0)) : "--:--";
   } else {
     timer.innerHTML = "";
     document.body.classList.remove("pre-draw-neutral");
@@ -288,6 +288,8 @@ function applyTimerState(data) {
     // tick() computes timeRemaining from targetTimestamp each second, so this
     // stays smooth — no 5s snap-jump of the seconds.
     timerState.targetTimestamp = new Date(data.targetTime).getTime();
+    
+
     // Remember the draw's end time so tick() can switch the countdown target
     // when pre_draw transitions to running (no server round-trip needed).
     if (data.endTime) {
@@ -297,7 +299,8 @@ function applyTimerState(data) {
     // Only initialize timeRemaining from the server when the phase changes.
     // During an active countdown, tick() owns timeRemaining (no flicker).
     if (statusChanged) {
-      timerState.timeRemaining = Math.max(data.timeRemaining ?? 0, 0);
+      //timerState.timeRemaining = Math.max(data.timeRemaining ?? 0, 0);
+      timerState.timeRemaining = Math.max(Math.floor((timerState.targetTimestamp - Date.now()) / 1000), 0);
     }
 
     // Detect transition from pre_draw to running
