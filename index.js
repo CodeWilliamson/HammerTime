@@ -166,20 +166,12 @@ app.get("/api/timer/config", requireAuth, (req, res) => {
 
 // --- WebSocket server (pushes timer state, config, and draws to clients) ---
 
-const server = app.listen(port, () => {
+const server = app.listen(port, '0.0.0.0', () => {
   console.log(`Curling timer backend running on http://localhost:${port}`);
 });
 
 const wss = new WebSocketServer({ server, path: "/ws" });
 const clients = new Set();
-
-// Read a single cookie from the raw Cookie header. The WS upgrade request is not an
-// Express route, so the cookie-parser middleware does not run on it.
-function getCookie(cookieHeader, name) {
-  if (!cookieHeader) return undefined;
-  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match ? match[1] : undefined;
-}
 
 // Stringify and send a message to every connected client
 function broadcast(msg) {
@@ -208,20 +200,6 @@ function broadcastDraws() {
 }
 
 wss.on("connection", (ws, req) => {
-  // Authenticate with the same JWT cookie the REST API uses. Browsers send cookies
-  // for same-origin WebSocket handshakes automatically.
-  const token = getCookie(req.headers.cookie, "token");
-  if (!token) {
-    ws.close(4001, "Unauthorized");
-    return;
-  }
-  try {
-    jwt.verify(token, SECRET);
-  } catch {
-    ws.close(4001, "Unauthorized");
-    return;
-  }
-
   clients.add(ws);
   ws.on("close", () => clients.delete(ws));
   ws.on("error", () => clients.delete(ws));
