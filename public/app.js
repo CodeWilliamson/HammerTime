@@ -60,16 +60,27 @@ function applyConfig(config) {
   }
   document.getElementById("ip-display").hidden = config.show_admin_url === 0
   timerState.show_admin_url = config.show_admin_url !== 0
+  window.dynamic_timer_format = config.dynamic_timer_format !== 0
 }
 
-function formatTime(seconds) {
+function formatTime(seconds, dynamic=false) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
 
   const hh = h.toString();
   const mm = String(m).padStart(2, '0');
-  return `${hh}:${mm}<span class="small-sec">:${String(s).padStart(2, '0')}</span>`;
+  const ss = String(s).padStart(2, '0');
+
+  if (dynamic) {
+    if (seconds < 60) {
+      return ss;
+    }
+    if (seconds < 3600) {
+      return `${mm}:${ss}`;
+    }
+  }
+  return `${hh}:${mm}<span class="small-sec">:${ss}</span>`;
 }
 
 function formatTimeOfDay(date) {
@@ -112,7 +123,7 @@ function render() {
     }else{
       document.body.classList.remove("critical");
     }
-    timer.innerHTML = timerState.timeRemaining !=null ? formatTime(Math.max(timerState.timeRemaining, 0)) : "--:--";
+    timer.innerHTML = timerState.timeRemaining !=null ? formatTime(Math.max(timerState.timeRemaining, 0), window.dynamic_timer_format) : "--:--";
   } else {
     timer.innerHTML = "";
     document.body.classList.remove("pre-draw-neutral");
