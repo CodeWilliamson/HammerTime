@@ -257,50 +257,34 @@ document.getElementById("resetBtn").addEventListener("click", () => {
   setStatus("");
 });
 
-// --- WebSocket connection: receive live config updates from the server ---
-let ws = null;
-let reconnectTimer = null;
-let reconnectDelay = 1000;
+// --- Server-Sent Events: receive live config updates from the server ---
+// EventSource reconnects automatically on blips; reopen manually only if the
+// stream fails permanently (readyState === CLOSED, e.g. a non-2xx response).
+let reopenTimer = null;
 
-function connectWS() {
-  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(`${protocol}//${location.host}/ws`);
+function connectStream() {
+  const es = new EventSource("/events");
 
-  ws.onopen = () => {
-    reconnectDelay = 1000;
+  es.onerror = () => {
+    if (es.readyState === EventSource.CLOSED && !reopenTimer) {
+      reopenTimer = setTimeout(() => {
+        reopenTimer = null;
+        connectStream();
+      }, 10000);
+    }
   };
 
-  ws.onmessage = (event) => {
-    let msg;
+  es.addEventListener("config", (event) => {
     try {
-      msg = JSON.parse(event.data);
-    } catch {
-      return;
-    }
-    if (msg.type === "config") {
+      const msg = JSON.parse(event.data);
       // Apply config pushed by the server (e.g. after another admin saved changes)
       fillForm(msg);
       refreshState();
+    } catch {
+      // ignore malformed messages
     }
-  };
-
-  ws.onclose = () => {
-    ws = null;
-    scheduleReconnect();
-  };
-
-  ws.onerror = () => {
-    ws.close();
-  };
+  });
 }
 
-function scheduleReconnect() {
-  if (reconnectTimer) clearTimeout(reconnectTimer);
-  reconnectTimer = setTimeout(() => {
-    connectWS();
-    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
-  }, reconnectDelay);
-}
-
-connectWS();
+connectStream();
 loadConfig();

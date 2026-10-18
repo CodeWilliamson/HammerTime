@@ -123,7 +123,16 @@ function render() {
     }else{
       document.body.classList.remove("critical");
     }
-    timer.innerHTML = timerState.timeRemaining !=null ? formatTime(Math.max(timerState.timeRemaining, 0), window.dynamic_timer_format) : "--:--";
+    const remaining = timerState.timeRemaining != null ? Math.max(timerState.timeRemaining, 0) : null;
+    if (remaining == null) {
+      timer.innerHTML = "--:--";
+    } else {
+      let useDynamic = window.dynamic_timer_format;
+      if (timerState.status === "complete" && remaining === 0) {
+        useDynamic = false;
+      }
+      timer.innerHTML = formatTime(remaining, useDynamic);
+    }
   } else {
     timer.innerHTML = "";
     document.body.classList.remove("pre-draw-neutral");
@@ -172,94 +181,70 @@ function tick() {
 // Last time the client saw a config update (used to ask the server for deltas on REST fallback)
 let lastConfigSeenAt = null;
 
-// --- WebSocket connection (replaces the 5-second poll) ---
-let ws = null;
-let reconnectTimer = null;
-let reconnectDelay = 1000;
-let lastMessageAt = Date.now();
+// --- Server-Sent Events connection (replaces the WebSocket + 5s poll) ---
+// The browser's EventSource handles reconnection automatically (with its own
+// backoff and Last-Event-ID semantics), so no manual reconnect/heartbeat
+// code is needed here. The server pushes a full snapshot ("hello") on every
+// (re)connect, then "timer_state" / "config" events as things change.
+let es = null;
+let reopenTimer = null;
 
-// Liveness watchdog: on flaky networks a dead TCP connection often never
-// fires onclose, leaving the kiosk on a zombie socket missing broadcasts.
-// The server pings back every 30s (pong) and broadcasts state every 60s,
-// so ~70s of silence means the connection is dead — force a close so the
-// reconnect logic takes over.
-const WS_STALE_MS = 70_000;
-const WS_WATCHDOG_INTERVAL_MS = 15_000;
+function connectStream() {
+  es = new EventSource("/events");
 
-function connectWS() {
-  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(`${protocol}//${location.host}/ws`);
-  lastMessageAt = Date.now();
-
-  ws.onopen = () => {
-    reconnectDelay = 1000;
-    // The server sends a "hello" message containing the full current state.
+  es.onopen = () => {
+    if (reopenTimer) {
+      clearTimeout(reopenTimer);
+      reopenTimer = null;
+    }
   };
 
-  ws.onmessage = (event) => {
-    lastMessageAt = Date.now();
-    let msg;
+  es.onerror = () => {
+    // Network blips: EventSource retries on its own with no help from us.
+    // But a non-2xx response (e.g. server coming back as a 500) makes
+    // EventSource give up permanently (readyState === CLOSED), so reopen
+    // on a delay instead of leaving the kiosk dark.
+    if (es && es.readyState === EventSource.CLOSED && !reopenTimer) {
+      reopenTimer = setTimeout(() => {
+        reopenTimer = null;
+        connectStream();
+      }, 10000);
+    }
+  };
+
+  es.addEventListener("hello", (event) => {
     try {
-      msg = JSON.parse(event.data);
+      const msg = JSON.parse(event.data);
+      if (msg.config) {
+        applyConfig(msg.config);
+        lastConfigSeenAt = new Date(msg.config.updated_at || Date.now());
+      }
+      applyTimerState(msg.timer_state);
     } catch {
-      return; // ignore malformed messages
+      // ignore malformed messages
     }
-    switch (msg.type) {
-      case "hello":
-        if (msg.config) {
-          applyConfig(msg.config);
-          lastConfigSeenAt = new Date(msg.config.updated_at || Date.now());
-        }
-        applyTimerState(msg.timer_state);
-        break;
-      case "timer_state":
-        applyTimerState(msg);
-        break;
-      case "config":
-        applyConfig(msg);
-        lastConfigSeenAt = new Date(msg.updated_at || Date.now());
-        break;
-      case "pong":
-        // heartbeat reply — nothing to do
-        break;
+  });
+
+  es.addEventListener("timer_state", (event) => {
+    try {
+      applyTimerState(JSON.parse(event.data));
+    } catch {
+      // ignore malformed messages
     }
-  };
+  });
 
-  ws.onclose = () => {
-    ws = null;
-    scheduleReconnect();
-  };
-
-  ws.onerror = () => {
-    ws.close(); // triggers onclose → reconnect
-  };
+  es.addEventListener("config", (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      applyConfig(msg);
+      lastConfigSeenAt = new Date(msg.updated_at || Date.now());
+    } catch {
+      // ignore malformed messages
+    }
+  });
 }
 
-function scheduleReconnect() {
-  if (reconnectTimer) clearTimeout(reconnectTimer);
-  reconnectTimer = setTimeout(() => {
-    connectWS();
-    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
-  }, reconnectDelay);
-}
-
-function sendPing() {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: "ping" }));
-  }
-}
-
-// Heartbeat: keeps the WS connection open and detects dead peers
-setInterval(sendPing, 30000);
-
-// Watchdog: kick silent (zombie) connections so onclose -> reconnect kicks in
-setInterval(() => {
-  if (ws && Date.now() - lastMessageAt > WS_STALE_MS) {
-    ws.close();
-  }
-}, WS_WATCHDOG_INTERVAL_MS);
-
-// One-shot REST fetch (priming / fallback when WS is unavailable)
+// One-shot REST fetch (priming / fallback when the event stream is unavailable)
 async function fetchState() {
   try {
     const params = new URLSearchParams();
@@ -427,8 +412,8 @@ document.body.addEventListener("click", (e) => {
 
 function startTimer() {
   setInterval(tick, 1000);
-  connectWS();   // open WS; replaces the 5-second poll
-  fetchState();  // prime with REST in case WS is slow to connect
+  connectStream(); // open SSE stream; replaces the 5-second poll
+  fetchState();    // prime with REST in case the stream is slow to connect
 }
 
 startTimer();

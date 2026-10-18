@@ -6,7 +6,7 @@ import authRouter from "./auth.js";
 import timerRouter from "./routes/timer.js";
 import drawsRouter from "./routes/draws.js";
 import drawOverrideRoutes from "./routes/drawOverrides.js";
-import { initBroadcast } from "./broadcast.js";
+import { handleEvents } from "./broadcast.js";
 
 dotenv.config();
 
@@ -37,9 +37,10 @@ app.use("/api/timer", timerRouter);
 app.use("/api/draws", drawsRouter);
 app.use("/api/draw-overrides", drawOverrideRoutes);
 
-// Start the HTTP server and attach the WebSocket broadcast server
-const server = app.listen(port, "0.0.0.0", () => {
+// Server-Sent Events stream: live timer state + config for all display pages
+app.get("/events", handleEvents);
+
+// Start the HTTP server
+app.listen(port, "0.0.0.0", () => {
   console.log(`Curling timer backend running on http://localhost:${port}`);
 });
-
-initBroadcast(server);

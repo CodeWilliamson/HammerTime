@@ -2,7 +2,7 @@ import { getFullConfig, getCurrentDraw } from "./db.js";
 import { getHostIP } from "./util.js";
 
 // Compute the current timer display state (idle / waiting / pre_draw / running / complete)
-// Shared by the REST state endpoint and WebSocket broadcasts.
+// Shared by the REST state endpoint and SSE broadcasts.
 export function getTimerState() {
   const config = getFullConfig();
   const state = {};
