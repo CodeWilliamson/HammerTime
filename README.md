@@ -58,6 +58,9 @@ The display background and text colors change automatically as time runs low:
 
 ### Installation
 
+For a Raspberry Pi deployment use [`install.sh`](#raspberry-pi-install--upgrade-script) — it
+installs from the latest GitHub release. The manual steps below are for development:
+
 ```bash
 git clone https://github.com/CodeWilliamson/HammerTime.git
 cd HammerTime
@@ -84,6 +87,52 @@ This creates `data/schedule.db` and applies all pending SQL migrations from the 
 The app will be available at [http://localhost:3000](http://localhost:3000).
 
 > Run every command from the repository root: `data/`, `public/` and `db_migrations/` are resolved relative to the working directory.
+
+### Raspberry Pi: install / upgrade script
+
+`install.sh` installs from the **latest published GitHub release** (a release tarball, not a
+git checkout) and is idempotent — run it again to upgrade:
+
+```bash
+# fresh machine — installs the latest release and sets up the systemd service
+curl -fsSL https://raw.githubusercontent.com/CodeWilliamson/HammerTime/main/install.sh | bash
+
+# or from an installed copy
+./install.sh
+```
+
+Each run asks GitHub for the latest release and compares it with the release recorded in
+`<dir>/.release`:
+
+- **same version** → nothing is downloaded; `.venv`, `.env`, the database and the service are
+  still checked/repaired
+- **newer version** → the release tarball is downloaded, unpacked into a staging directory and
+  swapped in (`data/`, `.env` and `.venv` are kept, stale files are removed), then dependencies,
+  migrations and the service are updated
+- **older version** → refused unless `--force` (downgrades are pointless: migrations are not reversible)
+
+```bash
+./install.sh --check         # report only: exit 0 = up to date, 10 = update available
+./install.sh --tag v1.5.0    # install/pin a specific release
+./install.sh --force         # reinstall, or allow a downgrade
+./install.sh --no-restart    # update files + migrations, leave the service running
+./install.sh --help          # all options
+```
+
+It also checks Python ≥ 3.11, `tar` and `python3-venv` (apt-installing what is missing), creates
+`.env` with a random `JWT_SECRET` (an existing `.env` is never overwritten), backs up
+`data/schedule.db` into `data/backups/` (last 10 kept), applies pending migrations, installs
+`/etc/systemd/system/curling-timer.service`, restarts it and waits for `/api/version` to answer.
+
+Options are `--dir`, `--repo OWNER/NAME`, `--tag`, `--port`, `--service`, `--token`, `--check`,
+`--force` and `--no-restart`; each is also an `HAMMERTIME_*` environment variable (e.g.
+`HAMMERTIME_SERVICE_NAME=hammertime.service`, `HAMMERTIME_GITHUB_TOKEN` for private repos).
+`data/` and `.env` survive every upgrade; the kiosk browser unit is not touched (see
+`rpi-config-starter/`). The listening port comes from `PORT` in `.env`, so change it there rather
+than with `--port`.
+
+> The install directory is **not** a git checkout — `.git` is removed on the first release
+> install. If the repository has no published releases, the newest semver tag is used instead.
 
 ---
 

@@ -118,6 +118,7 @@ To exercise a broadcast: log in (`curl -c cookies -X POST /auth/login -H 'Conten
 
 - No linter, formatter or typecheck. `ruff`, `black`, `mypy` are not configured — don't run them.
 - No CI beyond deployment: `.github/workflows/main.yml` runs on push to `main` on a self-hosted Raspberry Pi (`git pull`, venv + `pip install`, `python -m hammertime.migrate`, `sudo systemctl restart curling-timer.service`).
+- `install.sh` is the supported Pi install/upgrade path: it installs the **latest GitHub release** (release tarball via the GitHub API, falling back to the newest semver tag), records it in `<dir>/.release`, swaps the app tree in place (keeping `data/`, `.env`, `.venv`), then does deps → backup → migrations → systemd → health check. It **deletes `.git`**, so the `git pull` deployment above only works on a directory that was never release-installed. `--check` exits 0/10 (up to date/update available); `--tag` pins a release; migrations still gate on `__version__`.
 
 ## Gotchas
 
