@@ -1,7 +1,8 @@
 """Unit tests for the ported pure logic.
 
-The HTTP-level behaviour is covered by the parity/golden suites; these tests pin the
-small helpers those depend on (formatting, semver gating, SQL splitting, time math).
+HTTP-level behaviour lives in ``test_api.py`` / ``test_sse.py`` and the browser in
+``tests/visual/``; these tests pin the small helpers those depend on (formatting, semver
+gating, SQL splitting, time math).
 """
 
 from __future__ import annotations

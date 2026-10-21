@@ -2,7 +2,7 @@
 
 Curling rink draw timer for Raspberry Pi kiosk displays. Python 3.11+ (FastAPI + Uvicorn) + SQLite (`sqlite3`), vanilla JS frontend.
 
-This codebase is a **1-1 Python port of the original Node/Express server**. The `public/` frontend was not modified, so the browser is the contract: HTTP status codes, headers, JSON bodies and SSE frames must stay identical. Response fixtures captured from the Node version live in `tests/parity/golden/` and are enforced by the test suite.
+This codebase is a **1-1 Python port of the original Node/Express server**. The `public/` frontend was not modified, so the browser is the contract: HTTP status codes, headers, JSON bodies and SSE frames must stay identical. The quirks that contract depends on are pinned by the test suite (`tests/test_api.py`, `tests/test_db.py`, `tests/visual/`).
 
 ## Developer commands
 
@@ -12,11 +12,13 @@ Run from the repo root. All paths (`data/`, `public/`, `db_migrations/`) are res
 |---|---|
 | `python3 -m venv .venv` | Create the virtualenv (once) |
 | `./.venv/bin/python -m pip install -r requirements.txt` | Install runtime deps |
-| `./.venv/bin/python -m pip install -r requirements-dev.txt` | Install test deps (pytest, httpx) |
+| `./.venv/bin/python -m pip install -r requirements-dev.txt` | Install test deps (pytest, httpx, Playwright) |
+| `./.venv/bin/python -m playwright install chromium` | Fetch the browser for the visual tests (once) |
 | `./.venv/bin/python -m hammertime.migrate` | Apply pending SQL migrations from `db_migrations/`; creates `data/schedule.db` and seeds the default admin user |
 | `./.venv/bin/python -m hammertime` | Start the server, port `PORT` or `3000` |
-| `./.venv/bin/python -m pytest` | Fast test suite (~15 s) |
+| `./.venv/bin/python -m pytest` | Fast test suite (~35 s, incl. browser checks) |
 | `./.venv/bin/python -m pytest -m slow` | Adds the 20 s heartbeat / 60 s state-tick checks (~3 min) |
+| `./.venv/bin/python -m pytest -m visual` | Adds the screenshot-baseline comparisons (opt-in) |
 
 **Required order:** create venv → install → `python -m hammertime.migrate` → `python -m hammertime`. The app fails on import if the DB schema doesn't exist (`hammertime/db.py` opens `./data/schedule.db` at import, like `db.js` did).
 
@@ -91,14 +93,17 @@ Live updates use SSE at `GET /events` (`hammertime/broadcast.py`). There are **n
 ## Testing (no Node.js required)
 
 ```sh
-./.venv/bin/python -m pytest            # parity goldens + migrations + units
-./.venv/bin/python -m pytest -m slow    # background timer checks
+./.venv/bin/python -m pytest            # fast suite: units, db, api, sse, migrations, browser
+./.venv/bin/python -m pytest -m slow    # adds the 20 s heartbeat / 60 s state-tick checks
+./.venv/bin/python -m pytest -m visual  # opt-in screenshot baselines
 ```
 
-- `tests/parity/golden/` — Node-captured response fixtures (mutation CRUD script, 10 frozen-clock read scenarios, schema dump). `tests/parity/test_golden.py` replays them against the Python server.
-- `tests/parity/test_ab_parity.py` / `test_sse_parity.py` — start both servers against copies of a seeded database, freeze the clock in both (`HAMMERTIME_FAKE_NOW` / `tests/parity/fake_clock.mjs`), and diff status codes, headers, cookies, JSON bodies and SSE frames. They **skip** when `index.js` is absent (it was deleted at cutover); regenerate goldens from a pre-port worktree if needed.
-- `tests/parity/harness.py` holds the sandbox/seed helpers (`WEEKLY_DRAWS`, `OVERRIDES`, `INSTANTS`). Add a scenario there rather than hand-testing when changing behaviour.
+- `tests/support.py` — sandbox helpers: builds a database from `db_migrations/` in a temp dir, seeds `WEEKLY_DRAWS`/`OVERRIDES`, and starts the server on a free port with `HAMMERTIME_FAKE_NOW`. Frozen instants (`WAITING`, `PRE_DRAW`, `RUNNING`, `WARNING`, `COMPLETE`, `LATE_RUNNING`, `IDLE`) live here; add a scenario here rather than hand-testing.
+- `tests/conftest.py` — fixtures: `template_db` (session), `server`/`server_factory`, `client`, `auth_client`, `db` (swaps `hammertime.db._conn` to a sandbox copy for in-process tests), `freeze`. It also pins `TZ=America/Toronto` before `hammertime` is imported, so frozen instants mean the same thing everywhere.
+- `tests/test_db.py`, `test_timer_state.py`, `test_api.py`, `test_sse.py`, `test_migrations.py` — the named module is the thing under test.
+- `tests/visual/` — Playwright/Chromium. The browser clock is frozen (`page.clock.install` + `pause_at`) at the same instant as the server's, so countdown digits and colours can be asserted exactly. Behaviour assertions run by default; screenshots are `visual`-marked and compared with a pixel tolerance against `tests/visual/baselines/` (`--update-baselines` regenerates; baselines are machine-specific).
 - Never point the tests at `data/schedule.db`; they always build a database in a temp directory from the migrations.
+- Odd original behaviours (nested `{"id":{"id":N}}`, override-before-weekly ordering, week-view `start_time` dedupe, 204-on-missing-draw) are pinned as ordinary assertions in `test_db.py`/`test_api.py` — keep them when refactoring.
 
 Smoke test:
 
@@ -117,9 +122,9 @@ To exercise a broadcast: log in (`curl -c cookies -X POST /auth/login -H 'Conten
 ## Gotchas
 
 - `get_current_draw()` uses the **local timezone** for the current date — behavior depends on the host's TZ (and each kiosk's own clock for `tick()`; the server's `targetTime` is authoritative). Weekday names come from a hardcoded English tuple, not `strftime`, so locale can't change them.
-- Weekly draws overlapping a same-day override are excluded for that date (overlap test). The **admin week view** instead suppresses a weekly draw when an override has the *same `start_time`* — that inconsistency is original behaviour and is pinned by the golden fixtures.
+- Weekly draws overlapping a same-day override are excluded for that date (overlap test). The **admin week view** instead suppresses a weekly draw when an override has the *same `start_time`* — that inconsistency is original behaviour and is pinned by `tests/test_db.py`.
 - `get_current_draw()` puts override rows (rowid order, no `ORDER BY`) before weekly draws; that order decides which draw counts as "next". Don't "tidy" it.
-- `POST /api/draws` / `POST /api/draw-overrides` respond with a nested id — `{"id": {"id": 5, "override": false}}` — because the original handler wrapped the data-layer return value. Preserved for parity; the admin UI ignores it.
+- `POST /api/draws` / `POST /api/draw-overrides` respond with a nested id — `{"id": {"id": 5, "override": false}}` — because the original handler wrapped the data-layer return value. Preserved for the browser contract; the admin UI ignores it.
 - Anything that must move the kiosk's display **over time** (not triggered by a write) has to go through a server-side push (`broadcast_timer_state`) — the client will not re-derive new draws on its own.
 - Draw validation: weekly draws may not overlap other weekly draws (`validate_weekly_draw`); overrides may overlap anything and take precedence on their date.
 - Known, accepted differences from the Node version (framework-level only): unmatched URLs and malformed JSON bodies return a JSON error instead of Express's HTML page; `HEAD` requests get 405 (Express routes them to the GET handler); `SameSite`/content-type attribute casing differs internally; DST fold/gap handling of wall-clock draw times uses naive local datetimes. No client depends on any of these.

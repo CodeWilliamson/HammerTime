@@ -2,7 +2,7 @@
 
 The server always uses *local* wall-clock time (see ``db.get_current_draw``), exactly
 like the Node original which relies on ``new Date()``. Wrapping it in one function lets
-the parity test-suite freeze time through ``HAMMERTIME_FAKE_NOW`` without changing any
+the test suite freeze time through ``HAMMERTIME_FAKE_NOW`` without changing any
 production behaviour (the env var is never set in production).
 """
 

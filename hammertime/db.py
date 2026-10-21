@@ -10,7 +10,7 @@ Behaviour notes that are deliberately preserved from the Node version:
   before the weekly draws; that ordering decides which draw counts as "next".
 * ``get_all_draws`` suppresses a weekly draw when an override on that date has the
   *same start_time* — a different rule from the overlap filter used above. Both are
-  original behaviour and are covered by the parity suite.
+  original behaviour, pinned by ``tests/test_db.py``.
 """
 
 from __future__ import annotations

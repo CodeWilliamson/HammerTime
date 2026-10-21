@@ -112,7 +112,7 @@ async def require_auth(request: Request) -> None:
 
     try:
         # Expiry is validated against the server clock (like jsonwebtoken's Date.now())
-        # rather than wall time inside PyJWT, so the frozen-clock parity tests and the
+        # rather than wall time inside PyJWT, so the frozen-clock tests and the
         # production behaviour share one code path.
         decoded = jwt.decode(
             token,

@@ -1,2 +1,7 @@
 pytest==9.1.1
 httpx==0.28.1
+# Browser/visual tests. After installing, fetch the browser once:
+#   ./.venv/bin/python -m playwright install chromium
+pytest-playwright==0.10.0
+playwright==1.64.0
+pillow==13.0.0

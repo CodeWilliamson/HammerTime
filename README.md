@@ -157,27 +157,43 @@ To run migrations manually:
 
 ## Testing
 
-The project has a parity + regression suite (no Node.js required to run it):
+The suite is plain pytest — unit, data-layer, HTTP and browser tests. No Node.js is
+required:
 
 ```bash
 ./.venv/bin/python -m pip install -r requirements-dev.txt
-./.venv/bin/python -m pytest              # fast suite
-./.venv/bin/python -m pytest -m slow      # 20 s heartbeat / 60 s state-tick checks
+./.venv/bin/python -m playwright install chromium   # once, for the browser tests
+./.venv/bin/python -m pytest              # fast suite (~35 s)
+./.venv/bin/python -m pytest -m slow      # adds the 20 s heartbeat / 60 s state-tick checks
+./.venv/bin/python -m pytest -m visual    # opt-in screenshot baselines
 ```
 
-- `tests/parity/golden/` holds response fixtures captured from the original Node.js
-  implementation, so the ported server is still checked against it.
-- `tests/test_migrations.py` verifies the schema matches the original migrator's output
-  and that re-running migrations leaves an up-to-date database untouched.
-- The A/B tests (`test_ab_parity.py`, `test_sse_parity.py`) start both servers on
-  throw-away database copies and diff status codes, headers, cookies, JSON bodies and SSE
-  frames. They skip automatically when `index.js` is not present; to regenerate the golden
-  fixtures, check the pre-port commit out into a scratch worktree, run
-  `python -m tests.parity.capture_golden` and `python -m tests.parity.capture_schema`,
-  and copy the resulting `tests/parity/golden/` back.
+| File | What it covers |
+|---|---|
+| `tests/test_units.py` | pure helpers (formatting, semver, SQL splitting, time math) |
+| `tests/test_db.py` | `hammertime/db.py`: draw ordering, overlap rules, week view, config, users |
+| `tests/test_timer_state.py` | the five timer statuses and their window boundaries |
+| `tests/test_api.py` | routes, status codes, headers, cookies, auth, the admin CRUD flow |
+| `tests/test_sse.py` | `/events`: `hello` snapshot, broadcasts, heartbeat/state tick (`slow`) |
+| `tests/test_migrations.py` | schema shape, seed data, idempotency, semver gate, rollback |
+| `tests/visual/` | the kiosk/admin/settings pages in Chromium (Playwright) |
 
-The tests never touch `data/schedule.db` — they build their own database from the
-migrations in a temporary directory.
+`tests/support.py` builds the sandbox: a database migrated in a temp directory and seeded
+with a canonical week (`WEEKLY_DRAWS` / `OVERRIDES`), plus frozen instants
+(`WAITING`, `RUNNING`, …). `tests/conftest.py` turns that into fixtures
+(`server`, `client`, `auth_client`, `db`). Tests never touch `data/schedule.db`, and the
+whole suite runs in a pinned timezone (`America/Toronto`) with `HAMMERTIME_FAKE_NOW` set
+per test, so "now" is always a known Wednesday.
+
+**Visual tests.** `tests/visual/test_visual.py` drives a real browser against a real
+server; the browser clock is frozen with Playwright's clock API at the same instant as
+the server's, so countdowns render exact digits. The DOM/colour/interaction assertions run
+with the normal suite; the screenshot baselines are marked `visual` and therefore opt-in
+(they depend on the machine's fonts and Chromium build). Regenerate them with:
+
+```bash
+./.venv/bin/python -m pytest -m visual --update-baselines
+```
 
 ---
 
@@ -198,5 +214,5 @@ hammertime/
   routes/            # timer, draws, draw-overrides REST routes
 public/              # static frontend (kiosk, admin, settings, login)
 db_migrations/       # versioned SQL migrations
-tests/               # parity, golden, migration and unit tests
+tests/               # unit, data-layer, API, SSE, migration and browser tests
 ```
