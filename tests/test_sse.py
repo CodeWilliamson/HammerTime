@@ -47,6 +47,8 @@ def test_config_update_is_broadcast_then_timer_state(server, auth_client):
             config = json.loads(config_frame["data"])
             assert config["type"] == "config"
             assert config["background_color"] == "#123456"
+            # The kiosk turns every *_color key into a CSS variable, idle message included.
+            assert config["message_color"] == "#eeeeee"
 
             state_frame = support.read_frame(lines)
             assert state_frame["event"] == "timer_state"

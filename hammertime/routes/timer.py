@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger("hammertime.timer")
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
 from hammertime.auth import require_auth
 from hammertime.broadcast import broadcast_config, broadcast_timer_state
+from hammertime.config import debug_enabled
 from hammertime.db import get_current_draw, get_full_config, update_config
 from hammertime.responses import JSONResponse
 from hammertime.timer_state import get_timer_state
@@ -48,6 +51,9 @@ async def read_config(_: None = Depends(require_auth)):
 async def write_config(request: Request, _: None = Depends(require_auth)):
     """Update timer config fields and push changes live to all clients."""
     updates = await read_json(request)
+    if debug_enabled():
+        logger.info("Received updates: %s", updates)
+
     ok = update_config(updates if isinstance(updates, dict) else {})
     if not ok:
         return JSONResponse({"error": "No valid fields to update"}, status_code=400)

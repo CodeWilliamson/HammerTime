@@ -51,6 +51,7 @@ TIMER_CONFIG_COLUMNS = [
     "timer_color",
     "show_admin_url",
     "dynamic_timer_format",
+    "message_color",
 ]
 
 
@@ -138,10 +139,10 @@ def test_default_config_is_the_documented_starting_point(tmp_path):
         workdir / "data" / "schedule.db",
         "SELECT background_color_warning, background_color_critical, "
         "pre_draw_warning_threshold, running_warning_threshold, "
-        "show_admin_url, dynamic_timer_format FROM timer_config",
+        "show_admin_url, dynamic_timer_format, message_color FROM timer_config",
     )[0]
 
-    assert row == ("#ffae00", "#ff0000", 300, 900, 1, 1)
+    assert row == ("#ffae00", "#ff0000", 300, 900, 1, 1, "#eeeeee")
 
 
 # ---------------------------------------------------------------------------

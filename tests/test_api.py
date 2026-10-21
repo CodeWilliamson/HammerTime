@@ -320,6 +320,16 @@ def test_config_requires_auth_and_round_trips(auth_client):
     assert auth_client.get("/api/timer/config").json()["updated_at"] != support.PINNED_UPDATED_AT
 
 
+def test_config_round_trips_the_idle_message_color(auth_client):
+    """The idle message colour is a base column (like status_color), not a suffixed one."""
+    assert auth_client.get("/api/timer/config").json()["message_color"] == "#eeeeee"
+
+    updated = auth_client.put("/api/timer/config", json={"message_color": "#123456"})
+    assert updated.status_code == 204
+
+    assert auth_client.get("/api/timer/config").json()["message_color"] == "#123456"
+
+
 @pytest.mark.parametrize("body", [{}, {"unknown": "value"}])
 def test_config_rejects_updates_without_known_fields(auth_client, body):
     response = auth_client.put("/api/timer/config", json=body)

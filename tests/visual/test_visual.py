@@ -180,6 +180,8 @@ def test_settings_page_loads_the_current_config(open_page):
     assert page.input_value("#pre_draw_warning_threshold") == "300"
     assert page.is_checked("#show_admin_url")
     assert page.is_checked("#dynamic_timer_format")
+    # The idle message colour is the base column; its input name must match it exactly.
+    assert page.input_value('input[name="message_color"]') == "#eeeeee"
 
     # Save is disabled until something actually changes, then reports success.
     assert page.is_disabled("#saveBtn")

@@ -10,18 +10,11 @@ const ELEMENTS = [
   { key: "status", label: "Status" },
   { key: "message", label: "Message" },
 ];
-// Matches the kiosk display fallback for the default message color
-const DEFAULT_MESSAGE_COLOR = "#eeeeee";
-
 let savedConfig = {};
 let baseline = {};
 
 function fieldName(element, state) {
   return `${element}_color${state ? "_" + state : ""}`;
-}
-
-function hasField(element, state) {
-  return !(element === "message" && !state);
 }
 
 function buildColorMatrix() {
@@ -41,16 +34,12 @@ function buildColorMatrix() {
     ELEMENTS.forEach((el) => {
       const cell = document.createElement("div");
       cell.className = "matrix-cell";
-      if (hasField(el.key, state.key)) {
-        const input = document.createElement("input");
-        input.type = "color";
-        input.name = fieldName(el.key, state.key);
-        input.title = `${el.label} (${state.label})`;
-        input.setAttribute("aria-label", input.title);
-        cell.appendChild(input);
-      } else {
-        cell.classList.add("empty");
-      }
+      const input = document.createElement("input");
+      input.type = "color";
+      input.name = fieldName(el.key, state.key);
+      input.title = `${el.label} (${state.label})`;
+      input.setAttribute("aria-label", input.title);
+      cell.appendChild(input);
       matrix.appendChild(cell);
     });
   });
@@ -59,7 +48,7 @@ function buildColorMatrix() {
 function buildPreview() {
   const grid = document.getElementById("previewGrid");
   const samples = {
-    "": { status: "Next draw: 7:00 PM", timer: "", message: "" },
+    "": { status: "Next draw: 7:00 PM", timer: "", message: "Social" },
     running: { status: "Time remaining:", timer: "1:05:45", message: "Men's House" },
     warning: { status: "Time remaining:", timer: "4:31:15", message: "Women's House" },
     critical: { status: "Time's Up!", timer: "0:00", message: "" },
@@ -89,7 +78,7 @@ function updatePreview() {
   const form = document.getElementById("configForm");
   document.querySelectorAll(".preview-tile").forEach((tile) => {
     const state = tile.dataset.state;
-    const val = (el) => (hasField(el, state) ? form[fieldName(el, state)].value : DEFAULT_MESSAGE_COLOR);
+    const val = (el) => form[fieldName(el, state)].value;
     tile.style.background = val("background");
     tile.querySelector(".p-timer").style.color = val("timer");
     tile.querySelector(".p-status").style.color = val("status");
