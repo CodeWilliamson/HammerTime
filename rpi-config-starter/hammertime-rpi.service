@@ -3,13 +3,19 @@ Description=HammerTime
 Wants=hammertime-kiosk.service
 After=network.target
 
+# NOTE: this template still uses the paths from the original Node deployment.
+# Check these against the live unit (`systemctl cat curling-timer.service`) before
+# installing: WorkingDirectory, the venv location in ExecStart, the service name and
+# the User. The app resolves ./data, ./public and ./db_migrations relative to
+# WorkingDirectory, so it must be the repository root.
+
 [Service]
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/HammerTime
-ExecStart=/home/pi/.nvm/versions/node/v24.21.0/bin/node /home/pi/HammerTime/index.js
+ExecStart=/home/pi/HammerTime/.venv/bin/python -m hammertime
 Restart=on-failure
-Environment=NODE_ENV=production
+Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target

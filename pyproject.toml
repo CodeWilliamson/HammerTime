@@ -1,0 +1,10 @@
+# Note: the application/schema version lives in `hammertime/__init__.py` only, so it
+# cannot drift from the migration gate. This file holds tooling configuration.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -m 'not slow'"
+markers = [
+  "slow: long-running checks (e.g. the 20 s heartbeat / 60 s state tick)",
+  "node: requires the original Node server to be installed (A/B parity diff)",
+]

@@ -39,11 +39,12 @@ The display background and text colors change automatically as time runs low:
 
 ## Tech Stack
 
-- **Runtime:** Node.js with ES Modules
-- **Server:** Express 5
-- **Database:** SQLite
-- **Auth:** JWT
-- **Frontend:** Vanilla HTML, CSS, and JavaScript
+- **Runtime:** Python 3.11+
+- **Server:** FastAPI + Uvicorn (ASGI)
+- **Database:** SQLite (`sqlite3` from the standard library)
+- **Auth:** JWT (`PyJWT`) in an httpOnly cookie
+- **Frontend:** Vanilla HTML, CSS, and JavaScript (no build step)
+- **Real-time updates:** Server-Sent Events
 - **Deployment model:** Raspberry Pi running as a `systemd` service
 
 ---
@@ -52,16 +53,16 @@ The display background and text colors change automatically as time runs low:
 
 ### Prerequisites
 
-- Node.js 22+
-- npm
-- sqlite
+- Python 3.11 or newer (`python3-venv` on Raspberry Pi OS)
+- sqlite3
 
 ### Installation
 
 ```bash
 git clone https://github.com/CodeWilliamson/HammerTime.git
 cd HammerTime
-npm install
+python3 -m venv .venv
+./.venv/bin/python -m pip install -r requirements.txt
 ```
 
 ### Initialize the database
@@ -69,7 +70,7 @@ npm install
 Run migrations to create the database schema and seed the default admin user:
 
 ```bash
-npm run migrate
+./.venv/bin/python -m hammertime.migrate
 ```
 
 This creates `data/schedule.db` and applies all pending SQL migrations from the `db_migrations/` directory.
@@ -77,10 +78,12 @@ This creates `data/schedule.db` and applies all pending SQL migrations from the 
 ### Start the server
 
 ```bash
-npm start
+./.venv/bin/python -m hammertime
 ```
 
 The app will be available at [http://localhost:3000](http://localhost:3000).
+
+> Run every command from the repository root: `data/`, `public/` and `db_migrations/` are resolved relative to the working directory.
 
 ---
 
@@ -90,7 +93,20 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 |---|---|---|
 | `PORT` | `3000` | Port the server listens on |
 | `JWT_SECRET` | `timertimertimer` | Secret key for signing JWT tokens — **change this in production** |
+| `DEBUG` | unset | When set (any non-empty value, including `false`), log SSE connects/disconnects and every broadcast |
 
+Values are read from `.env` (see `.env.example`-style usage below) with real environment variables taking precedence:
+
+```ini
+PORT=3000
+JWT_SECRET=change-me
+DEBUG=1
+```
+
+> **Note for upgraders:** the previous Node version evaluated `JWT_SECRET` *before* loading
+> `.env`, so `.env`'s value was silently ignored and the default secret was always used.
+> The Python version honours `.env`, so existing login sessions are invalidated once on
+> cutover (log in again and you are done).
 
 ---
 
@@ -98,7 +114,7 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 
 ### Timer display
 
-Open `http://<your-host>:3000` in a browser. The timer display is public — no login required. It polls the server every few seconds and updates automatically.
+Open `http://<your-host>:3000` in a browser. The timer display is public — no login required. It receives live updates over Server-Sent Events and reconnects automatically.
 
 ### Admin panel
 
@@ -127,12 +143,60 @@ When a date has one or more overrides defined, weekly draws that overlap with an
 
 ## Database Migrations
 
-Migration files live in `db_migrations/` and are named using semantic versioning (e.g., `1.0.0.sql`, `1.1.0.sql`). The migration script tracks the current schema version in a `schema_version` table and only applies migrations newer than the current version.
+Migration files live in `db_migrations/` and are named using semantic versioning (e.g., `1.0.0.sql`, `1.1.0.sql`). The migration script tracks the current schema version in a `schema_version` table and only applies migrations newer than the current version — and not newer than the application version in `hammertime/__init__.py`.
+
+**Bump `__version__` in `hammertime/__init__.py` when you add a migration**, otherwise the new file will be skipped.
 
 To run migrations manually:
 
 ```bash
-npm run migrate
+./.venv/bin/python -m hammertime.migrate
 ```
 
+---
 
+## Testing
+
+The project has a parity + regression suite (no Node.js required to run it):
+
+```bash
+./.venv/bin/python -m pip install -r requirements-dev.txt
+./.venv/bin/python -m pytest              # fast suite
+./.venv/bin/python -m pytest -m slow      # 20 s heartbeat / 60 s state-tick checks
+```
+
+- `tests/parity/golden/` holds response fixtures captured from the original Node.js
+  implementation, so the ported server is still checked against it.
+- `tests/test_migrations.py` verifies the schema matches the original migrator's output
+  and that re-running migrations leaves an up-to-date database untouched.
+- The A/B tests (`test_ab_parity.py`, `test_sse_parity.py`) start both servers on
+  throw-away database copies and diff status codes, headers, cookies, JSON bodies and SSE
+  frames. They skip automatically when `index.js` is not present; to regenerate the golden
+  fixtures, check the pre-port commit out into a scratch worktree, run
+  `python -m tests.parity.capture_golden` and `python -m tests.parity.capture_schema`,
+  and copy the resulting `tests/parity/golden/` back.
+
+The tests never touch `data/schedule.db` — they build their own database from the
+migrations in a temporary directory.
+
+---
+
+## Project Layout
+
+```
+hammertime/
+  __main__.py        # python -m hammertime (server entrypoint)
+  main.py            # app wiring: static files, /admin, /api/version, routers, /events
+  config.py          # .env loading, cwd-relative paths, DEBUG flag
+  db.py              # SQLite queries + weekly draw overlap validation
+  auth.py            # login / change-password / require_auth
+  timer_state.py     # idle / waiting / pre_draw / running / complete state machine
+  broadcast.py       # SSE hub (hello snapshots, broadcasts, heartbeats)
+  migrate.py         # python -m hammertime.migrate
+  clock.py           # single source of "now" (test hook: HAMMERTIME_FAKE_NOW)
+  util.py            # host IP discovery
+  routes/            # timer, draws, draw-overrides REST routes
+public/              # static frontend (kiosk, admin, settings, login)
+db_migrations/       # versioned SQL migrations
+tests/               # parity, golden, migration and unit tests
+```

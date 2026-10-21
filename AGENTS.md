@@ -1,71 +1,109 @@
 # HammerTime
 
-Curling rink draw timer for Raspberry Pi kiosk displays. Node.js (ESM) + Express 5 + SQLite (`better-sqlite3`), vanilla JS frontend.
+Curling rink draw timer for Raspberry Pi kiosk displays. Python 3.11+ (FastAPI + Uvicorn) + SQLite (`sqlite3`), vanilla JS frontend.
+
+This codebase is a **1-1 Python port of the original Node/Express server**. The `public/` frontend was not modified, so the browser is the contract: HTTP status codes, headers, JSON bodies and SSE frames must stay identical. Response fixtures captured from the Node version live in `tests/parity/golden/` and are enforced by the test suite.
 
 ## Developer commands
 
-Run from the repo root. The app uses ES modules (`"type": "module"`) — use `import`/`export`, no `require()`.
+Run from the repo root. All paths (`data/`, `public/`, `db_migrations/`) are resolved relative to the working directory — same requirement as the Node version.
 
 | Command | Purpose |
 |---|---|
-| `npm install` | Install dependencies (node_modules is present locally) |
-| `npm run migrate` | Apply pending SQL migrations from `db_migrations/`; creates `data/schedule.db` and seeds the default admin user |
-| `npm start` | Start the server (`node index.js`), port `PORT` or `3000` |
+| `python3 -m venv .venv` | Create the virtualenv (once) |
+| `./.venv/bin/python -m pip install -r requirements.txt` | Install runtime deps |
+| `./.venv/bin/python -m pip install -r requirements-dev.txt` | Install test deps (pytest, httpx) |
+| `./.venv/bin/python -m hammertime.migrate` | Apply pending SQL migrations from `db_migrations/`; creates `data/schedule.db` and seeds the default admin user |
+| `./.venv/bin/python -m hammertime` | Start the server, port `PORT` or `3000` |
+| `./.venv/bin/python -m pytest` | Fast test suite (~15 s) |
+| `./.venv/bin/python -m pytest -m slow` | Adds the 20 s heartbeat / 60 s state-tick checks (~3 min) |
 
-**Required order:** `npm install` → `npm run migrate` → `npm start`. The app will fail on startup if the DB schema doesn't exist (`data/schedule.db` is created by migrations).
+**Required order:** create venv → install → `python -m hammertime.migrate` → `python -m hammertime`. The app fails on import if the DB schema doesn't exist (`hammertime/db.py` opens `./data/schedule.db` at import, like `db.js` did).
 
 **Required env:** set `PORT` and `JWT_SECRET` (default `timertimertimer` — change in production). `.env` is gitignored but exists locally.
+
+## Module map (old → new)
+
+| Node | Python |
+|---|---|
+| `index.js` | `hammertime/main.py` + `hammertime/__main__.py` |
+| `db.js` | `hammertime/db.py` |
+| `auth.js` | `hammertime/auth.py` |
+| `timerState.js` | `hammertime/timer_state.py` |
+| `broadcast.js` | `hammertime/broadcast.py` |
+| `util.js` | `hammertime/util.py` |
+| `db_migrate.js` | `hammertime/migrate.py` |
+| `routes/*.js` | `hammertime/routes/*.py` |
+| `package.json` version | `hammertime/__init__.py` `__version__` |
 
 ## Database
 
 - SQLite file: `./data/schedule.db` (relative to cwd — always run commands from the repo root)
-- Migrations: `db_migrations/*.sql`, named by semver (e.g. `1.0.0.sql`, `1.3.0.sql`). `npm run migrate` applies only migrations newer than the tracked `schema_version` and `<= ` the version in `package.json`; re-running is safe. **Bump `package.json` version when adding a migration** — it gates which migrations apply.
+- Migrations: `db_migrations/*.sql`, named by semver (e.g. `1.0.0.sql`, `1.5.0.sql`). `python -m hammertime.migrate` applies only migrations newer than the tracked `schema_version` and `<=` the version in `hammertime/__init__.py`; re-running is safe. **Bump `__version__` when adding a migration** — it gates which migrations apply.
+- The connection is autocommit (`isolation_level=None`) and `PRAGMA foreign_keys = ON`, matching better-sqlite3's defaults. Row results are converted to plain dicts with `sqlite3.Row`.
 - `data/.gitkeep` is tracked; `data/schedule.db` is local/untracked — **do not commit it**. It contains the club's real data, so be careful with mutating requests when smoke testing against it.
 - Schema: `draws` (recurring weekly draws), `draw_overrides` (date-specific, e.g. bonspiels), `timer_config`, `users`.
+- `tests/test_migrations.py` asserts the schema is byte-identical to the original Node migrator's output and that running migrations on a copy of an up-to-date database changes nothing.
 
 ## Auth
 
-- JWT in an httpOnly cookie (`/auth/login`), `requireAuth` middleware guards admin APIs.
-- Default admin credentials: `timer` / `timer` (change after first login). Seeded by the `1.0.0` migration.
-- The `/events` SSE stream and `/api/timer/state` are **public** (the kiosk display must work without a login).
+- JWT in an httpOnly cookie named `token` (1 hour, `SameSite=Strict`), signed HS256 with `JWT_SECRET`. `require_auth` is a FastAPI dependency that raises `AuthError`, rendered as `403 {"error": ...}`.
+- Token expiry is checked against `hammertime.clock.now()` (not PyJWT's internal wall clock) so it behaves like `jsonwebtoken`'s `Date.now()` and stays testable.
+- Default admin credentials: `timer` / `timer` (change after first login). Seeded by the `1.0.0` migration (bcrypt hash, cost 10 — compatible with Python `bcrypt`).
+- The `/events` SSE stream, `/api/timer/state` and `/api/timer/closest-draw-duration` are **public** (the kiosk display must work without a login).
+- `.env`'s `JWT_SECRET` **is** honoured (the Node version read it before `dotenv.config()` ran, so it always used the default).
 
 ## Real-time updates: Server-Sent Events
 
-Live updates use SSE at `GET /events` (`broadcast.js`). There are **no WebSockets** — the `ws` dependency was removed in Oct 2026 after a poll→WS→SSE migration history. Don't reintroduce polling or WS without a strong reason.
+Live updates use SSE at `GET /events` (`hammertime/broadcast.py`). There are **no WebSockets** — the `ws` dependency was removed in Oct 2026 after a poll→WS→SSE migration history. Don't reintroduce polling or WS without a strong reason.
 
 - Events are named snapshots, sent as `event: <type>` + `data: <json>`:
-  - `hello` — full snapshot on every (re)connect: `{ timer_state, config }`.
+  - `hello` — full snapshot on every (re)connect: `{ timer_state, config, adminUrl }`.
   - `timer_state` — current timer state; consumed by the kiosk (`public/app.js`).
   - `config` — display config; consumed by `public/settings.js`.
 - **Snapshots, not an event log**: there is no `Last-Event-ID` replay. On reconnect the server just resends current state, which is both simpler and correct. Keep payloads full-state, never diffs.
-- Server pushes:
-  - `broadcastTimerState()` after every draw/override/config mutation (routes in `routes/*.js`) — this is what lets kiosks react to admin edits instantly.
-  - A **60s unconditional** `broadcastTimerState()` (`startTimers()` in `broadcast.js`). Time-driven transitions (running → complete → next draw's pre_draw) are not tied to any REST write, so without this the kiosk freezes on "Time's Up!" forever. Do not remove it.
+- Server pushes (`broadcast_timer_state()` / `broadcast_config()`):
+  - after every draw/override/config mutation (routes in `hammertime/routes/*.py`) — this is what lets kiosks react to admin edits instantly.
+  - a **60s unconditional** `broadcast_timer_state()` (started lazily with the first SSE client by `_start_timers()`). Time-driven transitions (running → complete → next draw's pre_draw) are not tied to any REST write, so without this the kiosk freezes on "Time's Up!" forever. Do not remove it.
+- Fan-out: one `asyncio.Queue` per connected page; broadcasts are `put_nowait` of pre-serialized frames (`json.dumps(..., ensure_ascii=False, separators=(",", ":"))` to stay byte-identical with `JSON.stringify`).
 - Client-side reconnection: `EventSource` handles blips automatically. Both clients have a 10s reopen guard for the one fatal case — a non-2xx response permanently closes an `EventSource` (e.g. catching the server mid-restart as a 500).
 - SSE caveats: each open stream permanently consumes one of the browser's **6 HTTP/1.1 connections per origin** (WS was exempt from this). One tab per kiosk display is fine; 7+ tabs of timer/settings pages in one browser would starve. A REST fallback poll is the agreed remedy if this ever bites.
-- `heartbeat()` writes a `: keep-alive` comment every 20s; server responses set `X-Accel-Buffering: no` in case a reverse proxy is ever added.
-- `DEBUG=1` logs SSE connect/disconnect and every broadcast — useful when troubleshooting a display that "isn't updating".
+- `heartbeat()` pushes `: keep-alive\n\n` into every client queue every 20s; responses set `X-Accel-Buffering: no` in case a reverse proxy is ever added.
+- `DEBUG` (any non-empty value) logs SSE connect/disconnect and every broadcast — useful when troubleshooting a display that "isn't updating".
 
 ## Timer state machine
 
-- `getTimerState()` in `timerState.js` is the **single source of truth** (statuses: `idle`, `waiting`, `pre_draw`, `running`, `complete`). Both `/api/timer/state` and the SSE broadcasts compute through it.
+- `get_timer_state()` in `hammertime/timer_state.py` is the **single source of truth** (statuses: `idle`, `waiting`, `pre_draw`, `running`, `complete`). Both `/api/timer/state` and the SSE broadcasts compute through it.
 - Windows: `pre_draw` starts 10 min before a draw; `complete` lingers 10 min after one ends; then `waiting` (next draw known) or `idle` (none left today).
+- Per-status payload key sets differ and the kiosk depends on them: `running` has no `endTime`, `pre_draw` does; `waiting` uses `nextDrawStart/nextDrawTitle/nextDrawMessage`; `targetTime` is formatted like `Date#toISOString()` (`2026-10-21T19:00:00.000Z`) via `js_isoformat()`.
 - The kiosk (`public/app.js`) mirrors transitions locally in a 1s `tick()` so the display is smooth and survives disconnects, **but `tick()` is the sole writer of `timeRemaining` during a countdown** — letting both `tick()` and server pushes write it caused visible flicker (see commit history). Server pushes only re-adopt `timeRemaining` on a status change.
 - `fetchState()` (REST, `/api/timer/state?lastConfigSeenAt=…`) primes the kiosk on load and provides config deltas; it is not a poll loop.
 
 ## Frontend
 
-- `public/` is served statically by Express. No build step — edit HTML/CSS/JS directly.
+- `public/` is served statically by Starlette (`hammertime/responses.py::StaticFiles`, which restores Express's content types, e.g. `application/json; charset=utf-8`). No build step — edit HTML/CSS/JS directly.
 - Entry pages: `index.html` (kiosk timer, public), `login.html`, `admin.html`, `settings.html`.
 - `public/app.js` (kiosk): SSE stream + 1s `tick()` + local timer feature. **Local timer**: stored in `localStorage` (`localTimer`), overrides the central timer per-browser (curling sheets without a networked display); expires `LOCAL_COMPLETE_MS` (10 min) after its target.
 - `public/admin.js`: has **no live connection** — it fetches the schedule via REST (`loadDraws()`) on load/resize and immediately after its own save/delete. Other admins' changes only appear on next page load (accepted trade-off; the schedule is not broadcast).
 - `public/settings.js`: SSE for `config` only, so config edits sync across clients live.
 - Most DOM elements are fetched at module scope — client JS requires the DOM element ids in its HTML to exist; check both when adding UI.
 
-## Smoke testing (there is no test suite)
+## Testing (no Node.js required)
 
 ```sh
-DEBUG=1 PORT=3999 node index.js
+./.venv/bin/python -m pytest            # parity goldens + migrations + units
+./.venv/bin/python -m pytest -m slow    # background timer checks
+```
+
+- `tests/parity/golden/` — Node-captured response fixtures (mutation CRUD script, 10 frozen-clock read scenarios, schema dump). `tests/parity/test_golden.py` replays them against the Python server.
+- `tests/parity/test_ab_parity.py` / `test_sse_parity.py` — start both servers against copies of a seeded database, freeze the clock in both (`HAMMERTIME_FAKE_NOW` / `tests/parity/fake_clock.mjs`), and diff status codes, headers, cookies, JSON bodies and SSE frames. They **skip** when `index.js` is absent (it was deleted at cutover); regenerate goldens from a pre-port worktree if needed.
+- `tests/parity/harness.py` holds the sandbox/seed helpers (`WEEKLY_DRAWS`, `OVERRIDES`, `INSTANTS`). Add a scenario there rather than hand-testing when changing behaviour.
+- Never point the tests at `data/schedule.db`; they always build a database in a temp directory from the migrations.
+
+Smoke test:
+
+```sh
+DEBUG=1 PORT=3999 ./.venv/bin/python -m hammertime
 curl -N http://localhost:3999/events          # should print an "event: hello" snapshot
 ```
 
@@ -73,12 +111,16 @@ To exercise a broadcast: log in (`curl -c cookies -X POST /auth/login -H 'Conten
 
 ## What does NOT exist
 
-- No test suite, no linter, no formatter, no typecheck (plain JS). `npm test`, `npm run lint`, etc. are not defined — don't run them.
-- No CI beyond deployment: `.github/workflows/main.yml` runs on push to `main` on a self-hosted Raspberry Pi (`git pull`, `npm install`, `npm run migrate`, `sudo systemctl restart curling-timer.service`).
+- No linter, formatter or typecheck. `ruff`, `black`, `mypy` are not configured — don't run them.
+- No CI beyond deployment: `.github/workflows/main.yml` runs on push to `main` on a self-hosted Raspberry Pi (`git pull`, venv + `pip install`, `python -m hammertime.migrate`, `sudo systemctl restart curling-timer.service`).
 
 ## Gotchas
 
-- `getCurrentDraw()` in `db.js` uses the **local timezone** for the current date — behavior depends on the host's TZ (and each kiosk's own clock for `tick()`; the server's `targetTime` is authoritative).
-- Weekly draws overlapping a same-day override are excluded for that date; non-overlapping weekly draws still run.
-- Anything that must move the kiosk's display **over time** (not triggered by a write) has to go through a server-side push (`broadcastTimerState`) — the client will not re-derive new draws on its own.
-- Draw validation: weekly draws may not overlap other weekly draws (`validateWeeklyDraw`); overrides may overlap anything and take precedence on their date.
+- `get_current_draw()` uses the **local timezone** for the current date — behavior depends on the host's TZ (and each kiosk's own clock for `tick()`; the server's `targetTime` is authoritative). Weekday names come from a hardcoded English tuple, not `strftime`, so locale can't change them.
+- Weekly draws overlapping a same-day override are excluded for that date (overlap test). The **admin week view** instead suppresses a weekly draw when an override has the *same `start_time`* — that inconsistency is original behaviour and is pinned by the golden fixtures.
+- `get_current_draw()` puts override rows (rowid order, no `ORDER BY`) before weekly draws; that order decides which draw counts as "next". Don't "tidy" it.
+- `POST /api/draws` / `POST /api/draw-overrides` respond with a nested id — `{"id": {"id": 5, "override": false}}` — because the original handler wrapped the data-layer return value. Preserved for parity; the admin UI ignores it.
+- Anything that must move the kiosk's display **over time** (not triggered by a write) has to go through a server-side push (`broadcast_timer_state`) — the client will not re-derive new draws on its own.
+- Draw validation: weekly draws may not overlap other weekly draws (`validate_weekly_draw`); overrides may overlap anything and take precedence on their date.
+- Known, accepted differences from the Node version (framework-level only): unmatched URLs and malformed JSON bodies return a JSON error instead of Express's HTML page; `HEAD` requests get 405 (Express routes them to the GET handler); `SameSite`/content-type attribute casing differs internally; DST fold/gap handling of wall-clock draw times uses naive local datetimes. No client depends on any of these.
+- Trailing slashes: `hammertime/middleware.py` rewrites `/api/draws/` → `/api/draws` before routing because Express's non-strict routing accepts both. This matters — `public/admin.js` POSTs to `/api/draws/` when creating a draw, and without the rewrite the static mount answers it with 405. Don't remove that middleware.

@@ -1,0 +1,70 @@
+{
+  "objects": [
+    {
+      "type": "table",
+      "name": "draw_overrides",
+      "tbl_name": "draw_overrides",
+      "sql": "CREATE TABLE draw_overrides (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        date TEXT NOT NULL, -- ISO format \"YYYY-MM-DD\"\n        title TEXT NOT NULL,\n        message TEXT,\n        start_time TEXT NOT NULL, -- \"HH:mm\"\n        duration_minutes INTEGER NOT NULL\n    )"
+    },
+    {
+      "type": "table",
+      "name": "draws",
+      "tbl_name": "draws",
+      "sql": "CREATE TABLE draws (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        day_of_week TEXT NOT NULL,\n        title TEXT NOT NULL,\n        message TEXT,\n        start_time TEXT NOT NULL, -- e.g., \"19:00\"\n        duration_minutes INTEGER NOT NULL\n    )"
+    },
+    {
+      "type": "table",
+      "name": "schema_version",
+      "tbl_name": "schema_version",
+      "sql": "CREATE TABLE schema_version (\n    version TEXT NOT NULL\n  )"
+    },
+    {
+      "type": "table",
+      "name": "timer_config",
+      "tbl_name": "timer_config",
+      "sql": "CREATE TABLE timer_config (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        background_color VARCHAR(20) NOT NULL DEFAULT '#000000',\n        background_color_running VARCHAR(20) NOT NULL DEFAULT '#1adb00',\n        background_color_warning VARCHAR(20) NOT NULL DEFAULT '#ffbe32',\n        background_color_critical VARCHAR(20) NOT NULL DEFAULT '#ff3434',\n        timer_color_running VARCHAR(20) NOT NULL DEFAULT '#000000',\n        timer_color_warning VARCHAR(20) NOT NULL DEFAULT '#000000',\n        timer_color_critical VARCHAR(20) NOT NULL DEFAULT '#000000',\n        status_color VARCHAR(20) NOT NULL DEFAULT '#eeeeee',\n        status_color_running VARCHAR(20) NOT NULL DEFAULT '#000000',\n        status_color_warning VARCHAR(20) NOT NULL DEFAULT '#000000',\n        status_color_critical VARCHAR(20) NOT NULL DEFAULT '#000000',\n        message_color_running VARCHAR(20) NOT NULL DEFAULT '#000000',\n        message_color_warning VARCHAR(20) NOT NULL DEFAULT '#000000',\n        message_color_critical VARCHAR(20) NOT NULL DEFAULT '#000000',\n        timer_font_size VARCHAR(10) NOT NULL DEFAULT '32vw',\n        label_font_size VARCHAR(10) NOT NULL DEFAULT '8vw',\n        message_font_size VARCHAR(10) NOT NULL DEFAULT '8vw',\n        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP\n    , pre_draw_warning_threshold INTEGER NOT NULL DEFAULT 300, running_warning_threshold INTEGER NOT NULL DEFAULT 900, timer_color INTEGER NOT NULL DEFAULT '#eeeeee', show_admin_url INTEGER NOT NULL DEFAULT 1, dynamic_timer_format INTEGER NOT NULL DEFAULT 1)"
+    },
+    {
+      "type": "table",
+      "name": "users",
+      "tbl_name": "users",
+      "sql": "CREATE TABLE users (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    username TEXT UNIQUE NOT NULL,\n    password_hash TEXT NOT NULL\n  )"
+    }
+  ],
+  "schema_version": [
+    "1.5.0"
+  ],
+  "users": [
+    {
+      "username": "timer",
+      "password_hash": "$2b$10$XxAl8yrxI6aaLlbEvsL4COx9tPE6K7vM6nUL3t9v5Vi2cAzwPF9ty"
+    }
+  ],
+  "timer_config_rows": 1,
+  "timer_config_columns": [
+    "id",
+    "background_color",
+    "background_color_running",
+    "background_color_warning",
+    "background_color_critical",
+    "timer_color_running",
+    "timer_color_warning",
+    "timer_color_critical",
+    "status_color",
+    "status_color_running",
+    "status_color_warning",
+    "status_color_critical",
+    "message_color_running",
+    "message_color_warning",
+    "message_color_critical",
+    "timer_font_size",
+    "label_font_size",
+    "message_font_size",
+    "updated_at",
+    "pre_draw_warning_threshold",
+    "running_warning_threshold",
+    "timer_color",
+    "show_admin_url",
+    "dynamic_timer_format"
+  ]
+}

@@ -1,0 +1,1140 @@
+{
+  "scenario": "mutation",
+  "frozen_now": "2026-10-21T10:00:00",
+  "results": [
+    {
+      "label": "version",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "version": "<version>"
+      }
+    },
+    {
+      "label": "root",
+      "compare": "full",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "admin-redirect",
+      "compare": "full",
+      "status": 302,
+      "content_type": "text/plain; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/index.html",
+      "compare": "full",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/admin.html",
+      "compare": "full",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/settings.html",
+      "compare": "full",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/login.html",
+      "compare": "full",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/main.css",
+      "compare": "full",
+      "status": 200,
+      "content_type": "text/css; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/admin.css",
+      "compare": "full",
+      "status": 200,
+      "content_type": "text/css; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/app.js",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/settings.js",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/admin.js",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/manifest.json",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "name": "Favicon Package",
+        "short_name": "Favicons",
+        "start_url": "/",
+        "icons": [
+          {
+            "src": "/android-icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+          },
+          {
+            "src": "/android-icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+          },
+          {
+            "src": "/favicon-96x96.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "any"
+          },
+          {
+            "src": "/favicon-48x48.png",
+            "sizes": "48x48",
+            "type": "image/png",
+            "purpose": "any"
+          },
+          {
+            "src": "/favicon-32x32.png",
+            "sizes": "32x32",
+            "type": "image/png",
+            "purpose": "any"
+          },
+          {
+            "src": "/favicon-16x16.png",
+            "sizes": "16x16",
+            "type": "image/png",
+            "purpose": "any"
+          },
+          {
+            "src": "/maskable-icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+          },
+          {
+            "src": "/maskable-icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+          }
+        ],
+        "theme_color": "#ffffff",
+        "background_color": "#ffffff",
+        "display": "standalone"
+      }
+    },
+    {
+      "label": "static/favicon.ico",
+      "compare": "full",
+      "status": 200,
+      "content_type": "image/vnd.microsoft.icon",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/firstcall.mp3",
+      "compare": "full",
+      "status": 200,
+      "content_type": "audio/mpeg",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "static/missing",
+      "compare": "status",
+      "status": 404,
+      "content_type": "text/html; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "login/wrong-password",
+      "compare": "full",
+      "status": 401,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Invalid credentials"
+      }
+    },
+    {
+      "label": "login/unknown-user",
+      "compare": "full",
+      "status": 401,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Invalid credentials"
+      }
+    },
+    {
+      "label": "login/uppercase",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiVElNRVIiLCJpYXQiOjE3OTI1OTEyMDAsImV4cCI6MTc5MjU5NDgwMH0.2sbPCgE5PqTpLyemU9IkgdKpmDlwUTY7g-ZkUpyioY4",
+        "max-age": "3600",
+        "path": "/",
+        "httponly": "",
+        "samesite": "strict"
+      },
+      "body": {
+        "success": true
+      }
+    },
+    {
+      "label": "login",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoidGltZXIiLCJpYXQiOjE3OTI1OTEyMDAsImV4cCI6MTc5MjU5NDgwMH0.6ZjAD44PFOEtI2exo57K4_b4c4uyn1yKGl_srdRYvn8",
+        "max-age": "3600",
+        "path": "/",
+        "httponly": "",
+        "samesite": "strict"
+      },
+      "body": {
+        "success": true
+      }
+    },
+    {
+      "label": "config",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": 1,
+        "background_color": "#000000",
+        "background_color_running": "#1adb00",
+        "background_color_warning": "#ffae00",
+        "background_color_critical": "#ff0000",
+        "timer_color_running": "#000000",
+        "timer_color_warning": "#000000",
+        "timer_color_critical": "#000000",
+        "status_color": "#eeeeee",
+        "status_color_running": "#000000",
+        "status_color_warning": "#000000",
+        "status_color_critical": "#000000",
+        "message_color_running": "#000000",
+        "message_color_warning": "#000000",
+        "message_color_critical": "#000000",
+        "timer_font_size": "32vw",
+        "label_font_size": "8vw",
+        "message_font_size": "8vw",
+        "updated_at": "<timestamp>",
+        "pre_draw_warning_threshold": 300,
+        "running_warning_threshold": 900,
+        "timer_color": "#eeeeee",
+        "show_admin_url": 1,
+        "dynamic_timer_format": 1
+      }
+    },
+    {
+      "label": "draws",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "drawsForWeek": [
+          {
+            "id": 1,
+            "day_of_week": "Sunday",
+            "title": "Sunday Morning",
+            "message": "",
+            "start_time": "09:00",
+            "duration_minutes": 90,
+            "date": "2026-10-18"
+          },
+          {
+            "id": 2,
+            "day_of_week": "Sunday",
+            "title": "Sunday Evening",
+            "message": "Open league",
+            "start_time": "19:00",
+            "duration_minutes": 120,
+            "date": "2026-10-18"
+          },
+          {
+            "id": 2,
+            "date": "2026-10-21",
+            "title": "Bonspiel Lunch",
+            "message": null,
+            "start_time": "12:00",
+            "duration_minutes": 60,
+            "is_override": true
+          },
+          {
+            "id": 1,
+            "date": "2026-10-21",
+            "title": "Bonspiel Draw 1",
+            "message": "Sheet 1-4",
+            "start_time": "18:30",
+            "duration_minutes": 90,
+            "is_override": true
+          },
+          {
+            "id": 4,
+            "day_of_week": "Wednesday",
+            "title": "Late League",
+            "message": null,
+            "start_time": "21:00",
+            "duration_minutes": 60,
+            "date": "2026-10-21"
+          },
+          {
+            "id": 3,
+            "date": "2026-10-22",
+            "title": "Bonspiel Final",
+            "message": "Championship",
+            "start_time": "19:00",
+            "duration_minutes": 90,
+            "is_override": true
+          }
+        ],
+        "futureOverrides": [
+          {
+            "id": 4,
+            "date": "2026-11-07",
+            "title": "Future Bonspiel",
+            "message": null,
+            "start_time": "10:00",
+            "duration_minutes": 120,
+            "is_override": true
+          }
+        ]
+      }
+    },
+    {
+      "label": "draw/1",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": 1,
+        "day_of_week": "Sunday",
+        "title": "Sunday Morning",
+        "message": "",
+        "start_time": "09:00",
+        "duration_minutes": 90
+      }
+    },
+    {
+      "label": "draw/9999",
+      "compare": "full",
+      "status": 404,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Draw not found"
+      }
+    },
+    {
+      "label": "draw/not-a-number",
+      "compare": "full",
+      "status": 404,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Draw not found"
+      }
+    },
+    {
+      "label": "draw/12abc",
+      "compare": "full",
+      "status": 404,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Draw not found"
+      }
+    },
+    {
+      "label": "draw/create",
+      "compare": "full",
+      "status": 201,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": {
+          "id": 6,
+          "override": false
+        }
+      }
+    },
+    {
+      "label": "draw/create-overlap",
+      "compare": "full",
+      "status": 400,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "This draw overlaps with \"Valley League\" on Wednesday at 18:30 (110 min). Choose a different time or day."
+      }
+    },
+    {
+      "label": "draw/create-missing-title",
+      "compare": "status",
+      "status": 400,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "NOT NULL constraint failed: draws.title"
+      }
+    },
+    {
+      "label": "draw/update",
+      "compare": "full",
+      "status": 204,
+      "content_type": "",
+      "cookie": null,
+      "body": null
+    },
+    {
+      "label": "draw/after-update",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": 6,
+        "day_of_week": "Friday",
+        "title": "Parity Draw Updated",
+        "message": null,
+        "start_time": "10:30",
+        "duration_minutes": 75
+      }
+    },
+    {
+      "label": "draw/update-overlap",
+      "compare": "full",
+      "status": 400,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "This draw overlaps with \"Valley League\" on Wednesday at 18:30 (110 min). Choose a different time or day."
+      }
+    },
+    {
+      "label": "draw/delete",
+      "compare": "full",
+      "status": 204,
+      "content_type": "",
+      "cookie": null,
+      "body": null
+    },
+    {
+      "label": "draw/delete-again",
+      "compare": "full",
+      "status": 404,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Draw not found"
+      }
+    },
+    {
+      "label": "draw/delete-missing",
+      "compare": "full",
+      "status": 404,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Draw not found"
+      }
+    },
+    {
+      "label": "override/create",
+      "compare": "full",
+      "status": 201,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": {
+          "id": 6,
+          "override": true
+        }
+      }
+    },
+    {
+      "label": "override/update",
+      "compare": "full",
+      "status": 204,
+      "content_type": "",
+      "cookie": null,
+      "body": null
+    },
+    {
+      "label": "override/update-missing",
+      "compare": "full",
+      "status": 404,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Override draw not found"
+      }
+    },
+    {
+      "label": "override/delete",
+      "compare": "full",
+      "status": 204,
+      "content_type": "",
+      "cookie": null,
+      "body": null
+    },
+    {
+      "label": "override/delete-again",
+      "compare": "full",
+      "status": 404,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Draw not found"
+      }
+    },
+    {
+      "label": "config/update",
+      "compare": "full",
+      "status": 204,
+      "content_type": "",
+      "cookie": null,
+      "body": null
+    },
+    {
+      "label": "config/after-update",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": 1,
+        "background_color": "#123456",
+        "background_color_running": "#1adb00",
+        "background_color_warning": "#ffae00",
+        "background_color_critical": "#ff0000",
+        "timer_color_running": "#000000",
+        "timer_color_warning": "#000000",
+        "timer_color_critical": "#000000",
+        "status_color": "#eeeeee",
+        "status_color_running": "#000000",
+        "status_color_warning": "#000000",
+        "status_color_critical": "#000000",
+        "message_color_running": "#000000",
+        "message_color_warning": "#000000",
+        "message_color_critical": "#000000",
+        "timer_font_size": "32vw",
+        "label_font_size": "8vw",
+        "message_font_size": "8vw",
+        "updated_at": "<timestamp>",
+        "pre_draw_warning_threshold": 300,
+        "running_warning_threshold": 900,
+        "timer_color": "#eeeeee",
+        "show_admin_url": 1,
+        "dynamic_timer_format": 1
+      }
+    },
+    {
+      "label": "config/no-fields",
+      "compare": "full",
+      "status": 400,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "No valid fields to update"
+      }
+    },
+    {
+      "label": "config/mixed-fields",
+      "compare": "full",
+      "status": 204,
+      "content_type": "",
+      "cookie": null,
+      "body": null
+    },
+    {
+      "label": "config/after-mixed",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": 1,
+        "background_color": "#123456",
+        "background_color_running": "#1adb00",
+        "background_color_warning": "#ffae00",
+        "background_color_critical": "#ff0000",
+        "timer_color_running": "#000000",
+        "timer_color_warning": "#000000",
+        "timer_color_critical": "#000000",
+        "status_color": "#eeeeee",
+        "status_color_running": "#000000",
+        "status_color_warning": "#000000",
+        "status_color_critical": "#000000",
+        "message_color_running": "#000000",
+        "message_color_warning": "#000000",
+        "message_color_critical": "#000000",
+        "timer_font_size": "30vw",
+        "label_font_size": "8vw",
+        "message_font_size": "8vw",
+        "updated_at": "<timestamp>",
+        "pre_draw_warning_threshold": 300,
+        "running_warning_threshold": 900,
+        "timer_color": "#eeeeee",
+        "show_admin_url": 0,
+        "dynamic_timer_format": 1
+      }
+    },
+    {
+      "label": "state/after-config",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "status": "waiting",
+        "nextDrawStart": "2026-10-21T22:30:00.000Z",
+        "targetTime": "2026-10-21T22:30:00.000Z",
+        "nextDrawTitle": "Bonspiel Draw 1",
+        "nextDrawMessage": "Sheet 1-4",
+        "adminUrl": "http://<host-ip>/admin",
+        "config": {
+          "id": 1,
+          "background_color": "#123456",
+          "background_color_running": "#1adb00",
+          "background_color_warning": "#ffae00",
+          "background_color_critical": "#ff0000",
+          "timer_color_running": "#000000",
+          "timer_color_warning": "#000000",
+          "timer_color_critical": "#000000",
+          "status_color": "#eeeeee",
+          "status_color_running": "#000000",
+          "status_color_warning": "#000000",
+          "status_color_critical": "#000000",
+          "message_color_running": "#000000",
+          "message_color_warning": "#000000",
+          "message_color_critical": "#000000",
+          "timer_font_size": "30vw",
+          "label_font_size": "8vw",
+          "message_font_size": "8vw",
+          "updated_at": "<timestamp>",
+          "pre_draw_warning_threshold": 300,
+          "running_warning_threshold": 900,
+          "timer_color": "#eeeeee",
+          "show_admin_url": 0,
+          "dynamic_timer_format": 1
+        }
+      }
+    },
+    {
+      "label": "draws/after-mutations",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "drawsForWeek": [
+          {
+            "id": 1,
+            "day_of_week": "Sunday",
+            "title": "Sunday Morning",
+            "message": "",
+            "start_time": "09:00",
+            "duration_minutes": 90,
+            "date": "2026-10-18"
+          },
+          {
+            "id": 2,
+            "day_of_week": "Sunday",
+            "title": "Sunday Evening",
+            "message": "Open league",
+            "start_time": "19:00",
+            "duration_minutes": 120,
+            "date": "2026-10-18"
+          },
+          {
+            "id": 2,
+            "date": "2026-10-21",
+            "title": "Bonspiel Lunch",
+            "message": null,
+            "start_time": "12:00",
+            "duration_minutes": 60,
+            "is_override": true
+          },
+          {
+            "id": 1,
+            "date": "2026-10-21",
+            "title": "Bonspiel Draw 1",
+            "message": "Sheet 1-4",
+            "start_time": "18:30",
+            "duration_minutes": 90,
+            "is_override": true
+          },
+          {
+            "id": 4,
+            "day_of_week": "Wednesday",
+            "title": "Late League",
+            "message": null,
+            "start_time": "21:00",
+            "duration_minutes": 60,
+            "date": "2026-10-21"
+          },
+          {
+            "id": 3,
+            "date": "2026-10-22",
+            "title": "Bonspiel Final",
+            "message": "Championship",
+            "start_time": "19:00",
+            "duration_minutes": 90,
+            "is_override": true
+          }
+        ],
+        "futureOverrides": [
+          {
+            "id": 4,
+            "date": "2026-11-07",
+            "title": "Future Bonspiel",
+            "message": null,
+            "start_time": "10:00",
+            "duration_minutes": 120,
+            "is_override": true
+          }
+        ]
+      }
+    },
+    {
+      "label": "password/wrong-old",
+      "compare": "full",
+      "status": 401,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Invalid credentials"
+      }
+    },
+    {
+      "label": "password/change",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": {
+        "token": "",
+        "path": "/",
+        "httponly": "",
+        "samesite": "strict"
+      },
+      "body": {
+        "success": true
+      }
+    },
+    {
+      "label": "config/after-password-change",
+      "compare": "full",
+      "status": 403,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "No token"
+      }
+    },
+    {
+      "label": "login/old-password",
+      "compare": "full",
+      "status": 401,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "Invalid credentials"
+      }
+    },
+    {
+      "label": "login/new-password",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoidGltZXIiLCJpYXQiOjE3OTI1OTEyMDAsImV4cCI6MTc5MjU5NDgwMH0.6ZjAD44PFOEtI2exo57K4_b4c4uyn1yKGl_srdRYvn8",
+        "max-age": "3600",
+        "path": "/",
+        "httponly": "",
+        "samesite": "strict"
+      },
+      "body": {
+        "success": true
+      }
+    },
+    {
+      "label": "slash/draws-get",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "drawsForWeek": [
+          {
+            "id": 1,
+            "day_of_week": "Sunday",
+            "title": "Sunday Morning",
+            "message": "",
+            "start_time": "09:00",
+            "duration_minutes": 90,
+            "date": "2026-10-18"
+          },
+          {
+            "id": 2,
+            "day_of_week": "Sunday",
+            "title": "Sunday Evening",
+            "message": "Open league",
+            "start_time": "19:00",
+            "duration_minutes": 120,
+            "date": "2026-10-18"
+          },
+          {
+            "id": 2,
+            "date": "2026-10-21",
+            "title": "Bonspiel Lunch",
+            "message": null,
+            "start_time": "12:00",
+            "duration_minutes": 60,
+            "is_override": true
+          },
+          {
+            "id": 1,
+            "date": "2026-10-21",
+            "title": "Bonspiel Draw 1",
+            "message": "Sheet 1-4",
+            "start_time": "18:30",
+            "duration_minutes": 90,
+            "is_override": true
+          },
+          {
+            "id": 4,
+            "day_of_week": "Wednesday",
+            "title": "Late League",
+            "message": null,
+            "start_time": "21:00",
+            "duration_minutes": 60,
+            "date": "2026-10-21"
+          },
+          {
+            "id": 3,
+            "date": "2026-10-22",
+            "title": "Bonspiel Final",
+            "message": "Championship",
+            "start_time": "19:00",
+            "duration_minutes": 90,
+            "is_override": true
+          }
+        ],
+        "futureOverrides": [
+          {
+            "id": 4,
+            "date": "2026-11-07",
+            "title": "Future Bonspiel",
+            "message": null,
+            "start_time": "10:00",
+            "duration_minutes": 120,
+            "is_override": true
+          }
+        ]
+      }
+    },
+    {
+      "label": "slash/version",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "version": "<version>"
+      }
+    },
+    {
+      "label": "slash/state",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "status": "waiting",
+        "nextDrawStart": "2026-10-21T22:30:00.000Z",
+        "targetTime": "2026-10-21T22:30:00.000Z",
+        "nextDrawTitle": "Bonspiel Draw 1",
+        "nextDrawMessage": "Sheet 1-4",
+        "adminUrl": "http://<host-ip>/admin",
+        "config": {
+          "id": 1,
+          "background_color": "#123456",
+          "background_color_running": "#1adb00",
+          "background_color_warning": "#ffae00",
+          "background_color_critical": "#ff0000",
+          "timer_color_running": "#000000",
+          "timer_color_warning": "#000000",
+          "timer_color_critical": "#000000",
+          "status_color": "#eeeeee",
+          "status_color_running": "#000000",
+          "status_color_warning": "#000000",
+          "status_color_critical": "#000000",
+          "message_color_running": "#000000",
+          "message_color_warning": "#000000",
+          "message_color_critical": "#000000",
+          "timer_font_size": "30vw",
+          "label_font_size": "8vw",
+          "message_font_size": "8vw",
+          "updated_at": "<timestamp>",
+          "pre_draw_warning_threshold": 300,
+          "running_warning_threshold": 900,
+          "timer_color": "#eeeeee",
+          "show_admin_url": 0,
+          "dynamic_timer_format": 1
+        }
+      }
+    },
+    {
+      "label": "slash/closest-duration",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "durationMinutes": 90
+      }
+    },
+    {
+      "label": "slash/config-get",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": 1,
+        "background_color": "#123456",
+        "background_color_running": "#1adb00",
+        "background_color_warning": "#ffae00",
+        "background_color_critical": "#ff0000",
+        "timer_color_running": "#000000",
+        "timer_color_warning": "#000000",
+        "timer_color_critical": "#000000",
+        "status_color": "#eeeeee",
+        "status_color_running": "#000000",
+        "status_color_warning": "#000000",
+        "status_color_critical": "#000000",
+        "message_color_running": "#000000",
+        "message_color_warning": "#000000",
+        "message_color_critical": "#000000",
+        "timer_font_size": "30vw",
+        "label_font_size": "8vw",
+        "message_font_size": "8vw",
+        "updated_at": "<timestamp>",
+        "pre_draw_warning_threshold": 300,
+        "running_warning_threshold": 900,
+        "timer_color": "#eeeeee",
+        "show_admin_url": 0,
+        "dynamic_timer_format": 1
+      }
+    },
+    {
+      "label": "slash/admin",
+      "compare": "full",
+      "status": 302,
+      "content_type": "text/plain; charset=utf-8",
+      "cookie": null,
+      "body": "<html>"
+    },
+    {
+      "label": "slash/draws-create",
+      "compare": "full",
+      "status": 201,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": {
+          "id": 7,
+          "override": false
+        }
+      }
+    },
+    {
+      "label": "slash/draws-update",
+      "compare": "full",
+      "status": 204,
+      "content_type": "",
+      "cookie": null,
+      "body": null
+    },
+    {
+      "label": "slash/draws-delete",
+      "compare": "full",
+      "status": 204,
+      "content_type": "",
+      "cookie": null,
+      "body": null
+    },
+    {
+      "label": "slash/override-create",
+      "compare": "full",
+      "status": 201,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": {
+          "id": 7,
+          "override": true
+        }
+      }
+    },
+    {
+      "label": "slash/override-delete",
+      "compare": "full",
+      "status": 204,
+      "content_type": "",
+      "cookie": null,
+      "body": null
+    },
+    {
+      "label": "slash/config-put",
+      "compare": "full",
+      "status": 204,
+      "content_type": "",
+      "cookie": null,
+      "body": null
+    },
+    {
+      "label": "slash/login",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoidGltZXIiLCJpYXQiOjE3OTI1OTEyMDAsImV4cCI6MTc5MjU5NDgwMH0.6ZjAD44PFOEtI2exo57K4_b4c4uyn1yKGl_srdRYvn8",
+        "max-age": "3600",
+        "path": "/",
+        "httponly": "",
+        "samesite": "strict"
+      },
+      "body": {
+        "success": true
+      }
+    },
+    {
+      "label": "slash/draws-final",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "drawsForWeek": [
+          {
+            "id": 1,
+            "day_of_week": "Sunday",
+            "title": "Sunday Morning",
+            "message": "",
+            "start_time": "09:00",
+            "duration_minutes": 90,
+            "date": "2026-10-18"
+          },
+          {
+            "id": 2,
+            "day_of_week": "Sunday",
+            "title": "Sunday Evening",
+            "message": "Open league",
+            "start_time": "19:00",
+            "duration_minutes": 120,
+            "date": "2026-10-18"
+          },
+          {
+            "id": 2,
+            "date": "2026-10-21",
+            "title": "Bonspiel Lunch",
+            "message": null,
+            "start_time": "12:00",
+            "duration_minutes": 60,
+            "is_override": true
+          },
+          {
+            "id": 1,
+            "date": "2026-10-21",
+            "title": "Bonspiel Draw 1",
+            "message": "Sheet 1-4",
+            "start_time": "18:30",
+            "duration_minutes": 90,
+            "is_override": true
+          },
+          {
+            "id": 4,
+            "day_of_week": "Wednesday",
+            "title": "Late League",
+            "message": null,
+            "start_time": "21:00",
+            "duration_minutes": 60,
+            "date": "2026-10-21"
+          },
+          {
+            "id": 3,
+            "date": "2026-10-22",
+            "title": "Bonspiel Final",
+            "message": "Championship",
+            "start_time": "19:00",
+            "duration_minutes": 90,
+            "is_override": true
+          }
+        ],
+        "futureOverrides": [
+          {
+            "id": 4,
+            "date": "2026-11-07",
+            "title": "Future Bonspiel",
+            "message": null,
+            "start_time": "10:00",
+            "duration_minutes": 120,
+            "is_override": true
+          }
+        ]
+      }
+    }
+  ]
+}

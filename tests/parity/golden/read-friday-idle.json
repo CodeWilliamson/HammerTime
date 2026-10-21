@@ -1,0 +1,298 @@
+{
+  "scenario": "read-friday-idle",
+  "frozen_now": "2026-10-23T12:00:00",
+  "results": [
+    {
+      "label": "version",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "version": "<version>"
+      }
+    },
+    {
+      "label": "state/no-param",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "status": "idle",
+        "drawLabel": "No draw scheduled",
+        "drawMessage": null,
+        "targetTime": null,
+        "adminUrl": "http://<host-ip>/admin",
+        "config": {
+          "id": 1,
+          "background_color": "#000000",
+          "background_color_running": "#1adb00",
+          "background_color_warning": "#ffae00",
+          "background_color_critical": "#ff0000",
+          "timer_color_running": "#000000",
+          "timer_color_warning": "#000000",
+          "timer_color_critical": "#000000",
+          "status_color": "#eeeeee",
+          "status_color_running": "#000000",
+          "status_color_warning": "#000000",
+          "status_color_critical": "#000000",
+          "message_color_running": "#000000",
+          "message_color_warning": "#000000",
+          "message_color_critical": "#000000",
+          "timer_font_size": "32vw",
+          "label_font_size": "8vw",
+          "message_font_size": "8vw",
+          "updated_at": "<timestamp>",
+          "pre_draw_warning_threshold": 300,
+          "running_warning_threshold": 900,
+          "timer_color": "#eeeeee",
+          "show_admin_url": 1,
+          "dynamic_timer_format": 1
+        }
+      }
+    },
+    {
+      "label": "state/epoch",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "status": "idle",
+        "drawLabel": "No draw scheduled",
+        "drawMessage": null,
+        "targetTime": null,
+        "adminUrl": "http://<host-ip>/admin",
+        "config": {
+          "id": 1,
+          "background_color": "#000000",
+          "background_color_running": "#1adb00",
+          "background_color_warning": "#ffae00",
+          "background_color_critical": "#ff0000",
+          "timer_color_running": "#000000",
+          "timer_color_warning": "#000000",
+          "timer_color_critical": "#000000",
+          "status_color": "#eeeeee",
+          "status_color_running": "#000000",
+          "status_color_warning": "#000000",
+          "status_color_critical": "#000000",
+          "message_color_running": "#000000",
+          "message_color_warning": "#000000",
+          "message_color_critical": "#000000",
+          "timer_font_size": "32vw",
+          "label_font_size": "8vw",
+          "message_font_size": "8vw",
+          "updated_at": "<timestamp>",
+          "pre_draw_warning_threshold": 300,
+          "running_warning_threshold": 900,
+          "timer_color": "#eeeeee",
+          "show_admin_url": 1,
+          "dynamic_timer_format": 1
+        }
+      }
+    },
+    {
+      "label": "state/future",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "status": "idle",
+        "drawLabel": "No draw scheduled",
+        "drawMessage": null,
+        "targetTime": null,
+        "adminUrl": "http://<host-ip>/admin"
+      }
+    },
+    {
+      "label": "state/garbage",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "status": "idle",
+        "drawLabel": "No draw scheduled",
+        "drawMessage": null,
+        "targetTime": null,
+        "adminUrl": "http://<host-ip>/admin"
+      }
+    },
+    {
+      "label": "closest-draw-duration",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "durationMinutes": null
+      }
+    },
+    {
+      "label": "draws/unauth",
+      "compare": "full",
+      "status": 403,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "No token"
+      }
+    },
+    {
+      "label": "config/unauth",
+      "compare": "full",
+      "status": 403,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "error": "No token"
+      }
+    },
+    {
+      "label": "login",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoidGltZXIiLCJpYXQiOjE3OTI3NzEyMDAsImV4cCI6MTc5Mjc3NDgwMH0.OG7nAsRYFYWq_PG0x-TwV8wEshp3kdDTEyuxBpXvxDw",
+        "max-age": "3600",
+        "path": "/",
+        "httponly": "",
+        "samesite": "strict"
+      },
+      "body": {
+        "success": true
+      }
+    },
+    {
+      "label": "config",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "id": 1,
+        "background_color": "#000000",
+        "background_color_running": "#1adb00",
+        "background_color_warning": "#ffae00",
+        "background_color_critical": "#ff0000",
+        "timer_color_running": "#000000",
+        "timer_color_warning": "#000000",
+        "timer_color_critical": "#000000",
+        "status_color": "#eeeeee",
+        "status_color_running": "#000000",
+        "status_color_warning": "#000000",
+        "status_color_critical": "#000000",
+        "message_color_running": "#000000",
+        "message_color_warning": "#000000",
+        "message_color_critical": "#000000",
+        "timer_font_size": "32vw",
+        "label_font_size": "8vw",
+        "message_font_size": "8vw",
+        "updated_at": "<timestamp>",
+        "pre_draw_warning_threshold": 300,
+        "running_warning_threshold": 900,
+        "timer_color": "#eeeeee",
+        "show_admin_url": 1,
+        "dynamic_timer_format": 1
+      }
+    },
+    {
+      "label": "state/same-local",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "status": "idle",
+        "drawLabel": "No draw scheduled",
+        "drawMessage": null,
+        "targetTime": null,
+        "adminUrl": "http://<host-ip>/admin"
+      }
+    },
+    {
+      "label": "state/same-iso",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "status": "idle",
+        "drawLabel": "No draw scheduled",
+        "drawMessage": null,
+        "targetTime": null,
+        "adminUrl": "http://<host-ip>/admin"
+      }
+    },
+    {
+      "label": "draws",
+      "compare": "full",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "cookie": null,
+      "body": {
+        "drawsForWeek": [
+          {
+            "id": 1,
+            "day_of_week": "Sunday",
+            "title": "Sunday Morning",
+            "message": "",
+            "start_time": "09:00",
+            "duration_minutes": 90,
+            "date": "2026-10-18"
+          },
+          {
+            "id": 2,
+            "day_of_week": "Sunday",
+            "title": "Sunday Evening",
+            "message": "Open league",
+            "start_time": "19:00",
+            "duration_minutes": 120,
+            "date": "2026-10-18"
+          },
+          {
+            "id": 3,
+            "day_of_week": "Wednesday",
+            "title": "Valley League",
+            "message": "",
+            "start_time": "18:30",
+            "duration_minutes": 110,
+            "date": "2026-10-21"
+          },
+          {
+            "id": 4,
+            "day_of_week": "Wednesday",
+            "title": "Late League",
+            "message": null,
+            "start_time": "21:00",
+            "duration_minutes": 60,
+            "date": "2026-10-21"
+          },
+          {
+            "id": 5,
+            "day_of_week": "Thursday",
+            "title": "Thursday Club",
+            "message": "Club night",
+            "start_time": "19:00",
+            "duration_minutes": 120,
+            "date": "2026-10-22"
+          }
+        ],
+        "futureOverrides": [
+          {
+            "id": 4,
+            "date": "2026-11-07",
+            "title": "Future Bonspiel",
+            "message": null,
+            "start_time": "10:00",
+            "duration_minutes": 120,
+            "is_override": true
+          }
+        ]
+      }
+    }
+  ]
+}

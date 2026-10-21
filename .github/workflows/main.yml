@@ -19,13 +19,15 @@ jobs:
       - name: Install dependencies
         run: |
           cd /home/timer/HammerTime
-          npm install
+          python3 -m venv .venv
+          ./.venv/bin/python -m pip install --upgrade pip
+          ./.venv/bin/python -m pip install -r requirements.txt
 
       - name: Run database migrations
         run: |
           cd /home/timer/HammerTime
           echo "Running database migrations..."
-          npm run migrate
+          ./.venv/bin/python -m hammertime.migrate
 
       - name: Restart service
         run: sudo /bin/systemctl restart curling-timer.service
