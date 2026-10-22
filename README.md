@@ -95,10 +95,10 @@ git checkout) and is idempotent — run it again to upgrade:
 
 ```bash
 # fresh machine — installs the latest release and sets up the systemd service
-curl -fsSL https://raw.githubusercontent.com/CodeWilliamson/HammerTime/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/CodeWilliamson/HammerTime/main/rpi_setup/install.sh | bash
 
 # or from an installed copy
-./install.sh
+./rpi_setup/install.sh
 ```
 
 Each run asks GitHub for the latest release and compares it with the release recorded in
@@ -112,24 +112,39 @@ Each run asks GitHub for the latest release and compares it with the release rec
 - **older version** → refused unless `--force` (downgrades are pointless: migrations are not reversible)
 
 ```bash
-./install.sh --check         # report only: exit 0 = up to date, 10 = update available
-./install.sh --tag v1.5.0    # install/pin a specific release
-./install.sh --force         # reinstall, or allow a downgrade
-./install.sh --no-restart    # update files + migrations, leave the service running
-./install.sh --help          # all options
+./rpi_setup/install.sh --check         # report only: exit 0 = up to date, 10 = update available
+./rpi_setup/install.sh --tag v1.5.0    # install/pin a specific release
+./rpi_setup/install.sh --force         # reinstall, or allow a downgrade
+./rpi_setup/install.sh --no-restart    # update files + migrations, leave the service running
+./rpi_setup/install.sh --no-nginx      # don't touch nginx; the app stays on its own port
+./rpi_setup/install.sh --help          # all options
 ```
 
 It also checks Python ≥ 3.11, `tar` and `python3-venv` (apt-installing what is missing), creates
 `.env` with a random `JWT_SECRET` (an existing `.env` is never overwritten), backs up
 `data/schedule.db` into `data/backups/` (last 10 kept), applies pending migrations, installs
-`/etc/systemd/system/curling-timer.service`, restarts it and waits for `/api/version` to answer.
+`/etc/systemd/system/hammertime.service`, restarts it and waits for `/api/version` to answer.
+
+### nginx on port 80
+
+The last step puts nginx in front of the app, so a kiosk only needs `http://<pi>/`. nginx is
+installed if missing, and `/etc/nginx/sites-available/hammertime.conf` (symlinked into
+`sites-enabled/`) proxies port 80 to `127.0.0.1:<PORT>`. The Debian `default` site is disabled,
+because HammerTime claims port 80 as `default_server` and two of those are a config error. The new
+config must pass `nginx -t` before nginx is reloaded; if it doesn't, the previous config is put back
+and the installer stops.
+
+The proxy is set up for the `/events` SSE stream — `proxy_buffering off`, `proxy_cache off`,
+`proxy_http_version 1.1`, `Connection ""`, a one hour read timeout — because a buffering proxy holds
+frames back and the kiosk silently stops updating. Re-running the installer rewrites the file when
+`PORT` changes. Use `--no-nginx` to skip this step entirely and keep the app on its own port.
 
 Options are `--dir`, `--repo OWNER/NAME`, `--tag`, `--port`, `--service`, `--token`, `--check`,
-`--force` and `--no-restart`; each is also an `HAMMERTIME_*` environment variable (e.g.
-`HAMMERTIME_SERVICE_NAME=hammertime.service`, `HAMMERTIME_GITHUB_TOKEN` for private repos).
-`data/` and `.env` survive every upgrade; the kiosk browser unit is not touched (see
-`rpi-config-starter/`). The listening port comes from `PORT` in `.env`, so change it there rather
-than with `--port`.
+`--force`, `--no-restart` and `--no-nginx`; each is also an `HAMMERTIME_*` environment variable
+(e.g. `HAMMERTIME_SERVICE_NAME=curling-timer.service`, `HAMMERTIME_NGINX=0`,
+`HAMMERTIME_GITHUB_TOKEN` for private repos).
+`data/` and `.env` survive every upgrade; the kiosk browser unit is not managed by the installer.
+The listening port comes from `PORT` in `.env`, so change it there rather than with `--port`.
 
 > The install directory is **not** a git checkout — `.git` is removed on the first release
 > install. If the repository has no published releases, the newest semver tag is used instead.

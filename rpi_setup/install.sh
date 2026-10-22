@@ -19,27 +19,34 @@
 #   5. creates .env with a random JWT_SECRET if it does not exist yet
 #   6. backs up data/schedule.db, then applies pending SQL migrations
 #   7. installs the systemd unit and (re)starts the service
-#   8. waits for http://127.0.0.1:<port>/api/version to answer
+#   8. installs/refreshes the nginx reverse proxy that serves the app on port 80
+#   9. waits for http://127.0.0.1:<port>/api/version to answer, and for port 80
 #
 # The installed release is recorded in <dir>/.release. data/ (the club's schedule
 # database) and .env are preserved and never rewritten by an upgrade.
-# The kiosk browser unit is NOT touched — see rpi-config-starter/.
+# The kiosk browser unit is NOT touched — install that separately.
 #
 # Usage: ./install.sh [options]
 #   --dir PATH        Install directory                      (default: this install, else ~/HammerTime)
 #   --repo OWNER/NAME GitHub repository to install from      (default: CodeWilliamson/HammerTime)
 #   --tag TAG         Install this release/tag instead of the latest one
 #   --port N          Port for the server                    (default: 3000, or PORT from .env)
-#   --service NAME    systemd unit name                      (default: curling-timer.service)
+#   --service NAME    systemd unit name                      (default: hammertime.service)
 #   --token TOKEN     GitHub token, for private repos / rate limits
 #   --check           Report whether an update is available and exit (0 = up to date, 10 = update available)
 #   --force           Reinstall even if up to date (also allows a downgrade)
 #   --no-restart      Update files and migrations but leave the service running
+#   --no-nginx        Leave nginx alone; the app is only reachable on its own port
 #   -h, --help        Show this help
 #
 # Any option can also be set as an environment variable: HAMMERTIME_DIR, HAMMERTIME_REPO,
 # HAMMERTIME_TAG, HAMMERTIME_PORT, HAMMERTIME_SERVICE_NAME, HAMMERTIME_GITHUB_TOKEN,
-# HAMMERTIME_FORCE.
+# HAMMERTIME_FORCE, HAMMERTIME_NGINX (0 disables the proxy).
+#
+# nginx is installed (apt) when missing and takes over port 80, proxying to the app on
+# 127.0.0.1:<port>. Its config is written to /etc/nginx/sites-available/hammertime.conf
+# and the Debian default site is disabled, because HammerTime claims port 80. Streaming
+# (the /events SSE feed the kiosk depends on) is explicitly left unbuffered.
 #
 # Requires sudo (or run as root). Run it as the user that should own the files —
 # `sudo ./install.sh` is detected and runs the app steps as $SUDO_USER instead.
@@ -63,6 +70,7 @@ SERVICE_NAME="${HAMMERTIME_SERVICE_NAME:-hammertime.service}"
 PORT="${HAMMERTIME_PORT:-3000}"
 APP_DIR="${HAMMERTIME_DIR:-}"
 FORCE="${HAMMERTIME_FORCE:-0}"
+NGINX="${HAMMERTIME_NGINX:-1}"
 RESTART=1
 CHECK_ONLY=0
 PYTHON_BIN="${HAMMERTIME_PYTHON:-python3}"
@@ -88,12 +96,13 @@ while [ "$#" -gt 0 ]; do
     --check)      CHECK_ONLY=1; shift ;;
     --force)      FORCE=1; shift ;;
     --no-restart) RESTART=0; shift ;;
+    --no-nginx)   NGINX=0; shift ;;
     -h|--help)
       if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/install.sh" ]; then
         # Print the leading comment block (everything after the shebang).
         awk 'NR > 1 { if (/^#/) { sub(/^# ?/, ""); print } else exit }' "$SCRIPT_DIR/install.sh"
       else
-        echo "HammerTime installer. Options: --dir PATH --repo OWNER/NAME --tag TAG --port N --service NAME --token TOKEN --check --force --no-restart"
+        echo "HammerTime installer. Options: --dir PATH --repo OWNER/NAME --tag TAG --port N --service NAME --token TOKEN --check --force --no-restart --no-nginx"
       fi
       exit 0 ;;
     *)            die "Unknown option: $1 (try --help)" ;;
@@ -198,10 +207,11 @@ token = token.strip()
 HEADERS = {"Accept": "application/vnd.github+json", "User-Agent": "hammertime-install"}
 
 
-def request(url, accept=None):
+def request(url):
+    # The tarball endpoint only speaks the JSON media type: anything else (including
+    # application/octet-stream) is rejected with HTTP 415. It answers with a 302 to
+    # codeload.github.com, which serves the archive bytes.
     headers = dict(HEADERS)
-    if accept:
-        headers["Accept"] = accept
     if token:
         headers["Authorization"] = "Bearer " + token
     return urllib.request.Request(url, headers=headers)
@@ -312,7 +322,7 @@ def download():
         url = handle.read().strip()
     destination = os.path.join(workdir, "release.tar.gz")
     try:
-        with urllib.request.urlopen(request(url, accept="application/octet-stream"), timeout=180) as response:
+        with urllib.request.urlopen(request(url), timeout=180) as response:
             with open(destination, "wb") as handle:
                 while True:
                     chunk = response.read(65536)
@@ -320,7 +330,13 @@ def download():
                         break
                     handle.write(chunk)
     except urllib.error.HTTPError as error:
-        fail(f"Download failed ({error.code} {error.reason}).")
+        # Surface GitHub's own explanation (e.g. "Unsupported 'Accept' header").
+        detail = ""
+        try:
+            detail = (json.load(error).get("message") or "").strip().rstrip(".")
+        except Exception:
+            pass
+        fail(f"Download failed ({error.code} {error.reason})" + (f": {detail}." if detail else "."))
     except urllib.error.URLError as error:
         fail(f"Download failed ({error.reason}).")
     if os.path.getsize(destination) == 0:
@@ -631,18 +647,143 @@ else
   warn "Not restarting (--no-restart); run: sudo systemctl restart $SERVICE_NAME"
 fi
 
-# ---------------------------------------------------------------- 8. health check
+# ---------------------------------------------------------------- 8. nginx
+
+if [ "$NGINX" = "1" ]; then
+  info "nginx reverse proxy on port 80"
+
+  if ! command -v nginx >/dev/null 2>&1; then
+    if command -v apt-get >/dev/null 2>&1; then
+      ok "Installing nginx"
+      as_root apt-get update -qq
+      as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nginx
+    else
+      die "nginx is not installed and apt-get is unavailable. Install nginx, or use --no-nginx."
+    fi
+  fi
+
+  NGINX_SITE="/etc/nginx/sites-available/hammertime.conf"
+  NGINX_LINK="/etc/nginx/sites-enabled/hammertime.conf"
+  NGINX_DEFAULT="/etc/nginx/sites-enabled/default"
+
+  # proxy_buffering off is what keeps /events (SSE) streaming: with buffering on,
+  # nginx holds frames back and the kiosk display stops updating. The long read
+  # timeout keeps an idle stream open between the server's 20s heartbeats.
+  nginx_conf="# Managed by install.sh — re-run the installer instead of editing this file.
+server {
+    listen 80 default_server;
+    server_name _;
+
+    access_log /var/log/nginx/hammertime.access.log;
+    error_log  /var/log/nginx/hammertime.error.log;
+
+    client_max_body_size 2m;
+
+    location / {
+        proxy_pass http://127.0.0.1:$PORT;
+        proxy_http_version 1.1;
+        proxy_set_header Host              \$host;
+        proxy_set_header X-Real-IP         \$remote_addr;
+        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Connection        \"\";
+
+        # Server-Sent Events: stream frames straight through, never time out.
+        proxy_buffering off;
+        proxy_cache off;
+        gzip off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}"
+
+  previous_conf=""
+  if as_root test -f "$NGINX_SITE"; then
+    previous_conf="$(as_root cat "$NGINX_SITE" 2>/dev/null || true)"
+  fi
+
+  if [ "$previous_conf" != "$nginx_conf" ]; then
+    tmp_conf="$(mktemp)"
+    printf '%s\n' "$nginx_conf" > "$tmp_conf"
+    as_root install -m 0644 "$tmp_conf" "$NGINX_SITE"
+    rm -f "$tmp_conf"
+    ok "Wrote $NGINX_SITE"
+  else
+    ok "Config unchanged"
+  fi
+
+  link_added=0
+  if [ ! -e "$NGINX_LINK" ] && [ ! -L "$NGINX_LINK" ]; then link_added=1; fi
+  as_root ln -sfn "$NGINX_SITE" "$NGINX_LINK"
+
+  # The Debian default site also listens on 80 as default_server; two of those make
+  # `nginx -t` fail, so it has to go before the config can be validated.
+  default_disabled=0
+  if [ -e "$NGINX_DEFAULT" ] || [ -L "$NGINX_DEFAULT" ]; then
+    as_root rm -f "$NGINX_DEFAULT"
+    default_disabled=1
+    warn "Disabled the default nginx site (HammerTime now owns port 80)"
+  fi
+
+  # The ERR trap is cleared inside the substitution: `nginx -t` is expected to fail
+  # here (that is what the rollback below is for) and the noise would bury the reason.
+  if nginx_test="$( (trap - ERR; as_root nginx -t) 2>&1 )"; then
+    ok "Configuration valid"
+  else
+    # Put the previous setup back so a bad config can never take the kiosk offline.
+    if [ "$default_disabled" = "1" ]; then
+      as_root ln -sfn ../sites-available/default "$NGINX_DEFAULT"
+    fi
+    if [ "$link_added" = "1" ]; then as_root rm -f "$NGINX_LINK"; fi
+    if [ -n "$previous_conf" ]; then
+      tmp_conf="$(mktemp)"
+      printf '%s\n' "$previous_conf" > "$tmp_conf"
+      as_root install -m 0644 "$tmp_conf" "$NGINX_SITE"
+      rm -f "$tmp_conf"
+    else
+      as_root rm -f "$NGINX_SITE"
+    fi
+    die "nginx rejected the generated configuration — previous setup restored:
+$nginx_test"
+  fi
+
+  as_root systemctl enable nginx >/dev/null 2>&1 || true
+  proxy_active=0
+  if [ "$RESTART" = "1" ]; then
+    # A reload failure (something else already owns port 80, say) is not fatal:
+    # the app itself is installed and serving on $PORT.
+    if nginx_reload="$( (trap - ERR; as_root systemctl reload-or-restart nginx) 2>&1 )"; then
+      ok "nginx is serving port 80 → 127.0.0.1:$PORT"
+      proxy_active=1
+    else
+      warn "Could not start nginx (is another web server using port 80?):"
+      printf '%s\n' "$nginx_reload" | sed 's/^/      /'
+      warn "The app is still reachable on http://<host>:$PORT/"
+    fi
+  else
+    warn "Not reloading nginx (--no-restart); run: sudo systemctl reload nginx"
+  fi
+else
+  info "nginx reverse proxy"
+  warn "Skipped (--no-nginx): the app is only reachable on port $PORT"
+fi
+
+# ---------------------------------------------------------------- 9. health check
+
+http_ok() {  # http_ok <url> — true when the URL answers 200
+  "$VENV_PY" -c 'import sys, urllib.request
+try:
+    with urllib.request.urlopen(sys.argv[1], timeout=2) as response:
+        sys.exit(0 if response.status == 200 else 1)
+except Exception:
+    sys.exit(1)' "$1"
+}
 
 if [ "$RESTART" = "1" ]; then
   info "Waiting for the server on port $PORT"
   healthy=0
   for _ in $(seq 1 30); do
-    if "$VENV_PY" -c 'import sys, urllib.request
-try:
-    with urllib.request.urlopen(sys.argv[1], timeout=2) as response:
-        sys.exit(0 if response.status == 200 else 1)
-except Exception:
-    sys.exit(1)' "http://127.0.0.1:$PORT/api/version"; then
+    if http_ok "http://127.0.0.1:$PORT/api/version"; then
       healthy=1
       break
     fi
@@ -655,15 +796,50 @@ except Exception:
     warn "No response from http://127.0.0.1:$PORT — inspect the logs:"
     echo "      sudo journalctl -u $SERVICE_NAME -n 50 --no-pager"
   fi
+
+  if [ "$NGINX" = "1" ]; then
+    proxied=0
+    for _ in $(seq 1 15); do
+      if http_ok "http://127.0.0.1/api/version"; then
+        proxied=1
+        break
+      fi
+      sleep 1
+    done
+    if [ "$proxied" = "1" ]; then
+      ok "nginx is proxying port 80"
+    else
+      proxy_active=0
+      warn "No response from http://127.0.0.1/ — is nginx including sites-enabled? Check:"
+      echo "      sudo nginx -T | grep hammertime"
+      echo "      sudo journalctl -u nginx -n 50 --no-pager"
+    fi
+  fi
 fi
 
 # ---------------------------------------------------------------- done
 
 host_ip="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
+if [ "${proxy_active:-0}" = "1" ]; then
+  display_url="http://${host_ip:-localhost}/"
+  admin_url="http://${host_ip:-localhost}/admin"
+else
+  display_url="http://${host_ip:-localhost}:$PORT/"
+  admin_url="http://${host_ip:-localhost}:$PORT/admin"
+fi
 printf '\n\033[1;32mHammerTime %s is installed.\033[0m\n' "$new_version"
 printf '  Release : %s (%s)\n' "$latest_tag" "$PROJECT"
-printf '  Display : http://%s:%s/\n' "${host_ip:-localhost}" "$PORT"
-printf '  Admin   : http://%s:%s/admin   (default login: timer / timer — change it)\n' "${host_ip:-localhost}" "$PORT"
+printf '  Display : %s\n' "$display_url"
+printf '  Admin   : %s   (default login: timer / timer — change it)\n' "$admin_url"
+if [ "${proxy_active:-0}" = "1" ]; then
+  printf '  Proxy   : nginx :80 → 127.0.0.1:%s  (config: %s)\n' "$PORT" "$NGINX_SITE"
+elif [ "$NGINX" = "1" ]; then
+  if [ "$RESTART" = "1" ]; then
+    printf '  Proxy   : %s is installed but not answering on port 80 (see above)\n' "$NGINX_SITE"
+  else
+    printf '  Proxy   : %s is installed, not reloaded (--no-restart)\n' "$NGINX_SITE"
+  fi
+fi
 printf '  Service : %s  (logs: sudo journalctl -u %s -f)\n' "$SERVICE_NAME" "$SERVICE_NAME"
 printf '  Code    : %s\n' "$APP_DIR"
 printf '  Data    : %s/data/schedule.db  (backups in data/backups/)\n\n' "$APP_DIR"
