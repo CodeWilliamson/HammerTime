@@ -189,6 +189,20 @@ input[type="color"]::-moz-color-swatch {
   font-size: 0.95rem;
 }
 
+.field-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.field-hint {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
 .field-row input[type="text"],
 .field-row input[type="number"] {
   width: 140px;

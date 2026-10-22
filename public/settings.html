@@ -87,7 +87,13 @@
       <section class="card">
         <h2>Display Behavior</h2>
         <div class="field-row">
-          <label for="dynamic_timer_format">Dynamic timer format</label>
+          <div class="field-text">
+            <label for="dynamic_timer_format">Dynamic timer format</label>
+            <p class="field-hint">
+              Drops unneeded units as the timer counts down: the hours are hidden once less than an
+              hour remains, and the minutes once less than a minute remains.
+            </p>
+          </div>
           <input type="checkbox" id="dynamic_timer_format" name="dynamic_timer_format" />
         </div>
       </section>
