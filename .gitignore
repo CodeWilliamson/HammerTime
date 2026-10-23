@@ -7,6 +7,14 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 

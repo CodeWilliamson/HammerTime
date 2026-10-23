@@ -145,11 +145,6 @@ main {
   justify-content: center;
 }
 
-.matrix-cell.empty::after {
-  content: "—";
-  color: #c4c8cf;
-}
-
 input[type="color"] {
   width: 100%;
   max-width: 64px;
@@ -192,6 +187,20 @@ input[type="color"]::-moz-color-swatch {
 
 .field-row label {
   font-size: 0.95rem;
+}
+
+.field-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.field-hint {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
 }
 
 .field-row input[type="text"],

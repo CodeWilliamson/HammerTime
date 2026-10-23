@@ -10,18 +10,11 @@ const ELEMENTS = [
   { key: "status", label: "Status" },
   { key: "message", label: "Message" },
 ];
-// Matches the kiosk display fallback for the default message color
-const DEFAULT_MESSAGE_COLOR = "#eeeeee";
-
 let savedConfig = {};
 let baseline = {};
 
 function fieldName(element, state) {
   return `${element}_color${state ? "_" + state : ""}`;
-}
-
-function hasField(element, state) {
-  return !(element === "message" && !state);
 }
 
 function buildColorMatrix() {
@@ -41,28 +34,40 @@ function buildColorMatrix() {
     ELEMENTS.forEach((el) => {
       const cell = document.createElement("div");
       cell.className = "matrix-cell";
-      if (hasField(el.key, state.key)) {
-        const input = document.createElement("input");
-        input.type = "color";
-        input.name = fieldName(el.key, state.key);
-        input.title = `${el.label} (${state.label})`;
-        input.setAttribute("aria-label", input.title);
-        cell.appendChild(input);
-      } else {
-        cell.classList.add("empty");
-      }
+      const input = document.createElement("input");
+      input.type = "color";
+      input.name = fieldName(el.key, state.key);
+      input.title = `${el.label} (${state.label})`;
+      input.setAttribute("aria-label", input.title);
+      cell.appendChild(input);
       matrix.appendChild(cell);
     });
   });
 }
 
+// Mirrors formatTime() in app.js so the preview matches the kiosk
+function formatTimeParts(seconds, dynamic) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  const ss = String(s).padStart(2, "0");
+
+  if (dynamic) {
+    if (seconds < 60) return { main: ss, sec: "" };
+    if (seconds < 3600) return { main: `${String(m).padStart(2, "0")}:${ss}`, sec: "" };
+  }
+  return { main: `${h}:${String(m).padStart(2, "0")}`, sec: `:${ss}` };
+}
+
 function buildPreview() {
   const grid = document.getElementById("previewGrid");
+  // Seconds rather than formatted text, so updatePreview() can re-render the
+  // timer when the dynamic format checkbox changes.
   const samples = {
-    "": { status: "Next draw: 7:00 PM", timer: "", message: "" },
-    running: { status: "Time remaining:", timer: "1:05:45", message: "Men's House" },
-    warning: { status: "Time remaining:", timer: "4:31:15", message: "Women's House" },
-    critical: { status: "Time's Up!", timer: "0:00", message: "" },
+    "": { status: "Next draw: 7:00 PM", seconds: null, message: "Social" },
+    running: { status: "Time remaining:", seconds: 45 * 60, message: "Men's House" },
+    warning: { status: "Time remaining:", seconds: 45, message: "Women's House" },
+    critical: { status: "Time's Up!", seconds: 0, message: "" },
   };
   STATES.forEach((state) => {
     const s = samples[state.key];
@@ -73,31 +78,44 @@ function buildPreview() {
       <span class="preview-tag"></span>
       <div class="p-status"></div>
       <div class="p-timer"></div>
-      <div class="p-timer-sec"></div>
       <div class="p-message"></div>`;
     tile.querySelector(".preview-tag").textContent = state.label;
     tile.querySelector(".p-status").textContent = s.status;
-    tile.querySelector(".p-timer").textContent = s.timer ? s.timer.split(":")[0] + ":" + s.timer.split(":")[1] : "";
-    tile.querySelector(".p-timer-sec").textContent = s.timer && s.timer.split(":")[2] ? ":" + s.timer.split(":")[2] : "";
-    tile.querySelector(".p-timer").appendChild(tile.querySelector(".p-timer-sec"));
     tile.querySelector(".p-message").textContent = s.message;
+    if (s.seconds != null) tile.dataset.seconds = String(s.seconds);
     grid.appendChild(tile);
   });
 }
 
 function updatePreview() {
   const form = document.getElementById("configForm");
+  const dynamicEnabled = form.dynamic_timer_format.checked;
   document.querySelectorAll(".preview-tile").forEach((tile) => {
     const state = tile.dataset.state;
-    const val = (el) => (hasField(el, state) ? form[fieldName(el, state)].value : DEFAULT_MESSAGE_COLOR);
+    const val = (el) => form[fieldName(el, state)].value;
     tile.style.background = val("background");
     tile.querySelector(".p-timer").style.color = val("timer");
     tile.querySelector(".p-status").style.color = val("status");
     tile.querySelector(".p-message").style.color = val("message");
 
+    // The kiosk ignores the dynamic setting for a finished countdown, so "Game End" keeps 0:00:00
+    const dynamic = dynamicEnabled && !(state === "critical" && Number(tile.dataset.seconds) === 0);
+    const timer = tile.querySelector(".p-timer");
+    timer.textContent = "";
+    if (tile.dataset.seconds != null) {
+      const { main, sec } = formatTimeParts(Number(tile.dataset.seconds), dynamic);
+      timer.textContent = main;
+      if (sec) {
+        const span = document.createElement("span");
+        span.className = "p-timer-sec";
+        span.textContent = sec;
+        timer.appendChild(span);
+      }
+    }
+
     // Tile is a size container, so 1cqw here equals 1vw on the kiosk
     const size = (name, fallback) => `${parseFloat(form[name].value) || fallback}cqw`;
-    tile.querySelector(".p-timer").style.fontSize = size("timer_font_size", 28);
+    timer.style.fontSize = size("timer_font_size", 28);
     tile.querySelector(".p-status").style.fontSize = size("label_font_size", 5);
     tile.querySelector(".p-message").style.fontSize = size("message_font_size", 5);
   });
