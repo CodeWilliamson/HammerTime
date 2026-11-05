@@ -41,7 +41,7 @@
       font-size: 28vw;
       font-weight: bold;
       line-height: 1;
-      transition: color 0.5s;
+      transition: color 0.5s, font-size 0.3s ease;
       text-align: center;
       color: var(--timer-color, #ffffff) !important;
     }
@@ -67,7 +67,9 @@
        Colours are inherited, so it follows the running/warning/critical theme. */
     #label .end-badge {
       display: inline-block;
-      padding: 0.2em 0.2em 0.2em 0.2em;
+      /* Deliberately tight vertically: this badge is what the enlarged-end layout has to
+         fit on a 1080p screen, so every 0.1em of padding is height the countdown loses. */
+      padding: 0.04em 0.04em;
       border: 0.06em solid currentColor;
       border-radius: 0.2em;
       font-weight: bold;
@@ -132,6 +134,18 @@
 
     #message {
       font-size: var(--message-font-size, 5vw);
+    }
+
+    /* Start of an end: the label (and with it the end badge) grows by the configured
+       scale, and the countdown shrinks by the configured amount so the bigger badge
+       still fits instead of pushing the layout off the screen. Both animations are
+       0.3s like the label's own transition, so they move together. */
+    body.end-highlight #label {
+      font-size: calc(var(--label-font-size, 5vw) * var(--end-highlight-scale, 1.5));
+    }
+
+    body.end-highlight #timer {
+      font-size: calc(var(--timer-font-size, 28vw) * var(--end-highlight-timer-scale, 0.75));
     }
 
     #ip-display {

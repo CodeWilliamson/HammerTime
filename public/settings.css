@@ -214,10 +214,54 @@ input[type="color"]::-moz-color-swatch {
   color: var(--text);
 }
 
+/* Checkboxes are drawn as toggle switches. The real <input type="checkbox"> stays in
+   the DOM — labels, keyboard and getFormData() keep working — it is only restyled. */
 .field-row input[type="checkbox"] {
-  width: 1.2rem;
-  height: 1.2rem;
-  accent-color: var(--accent);
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: none;
+  width: 2.6rem;
+  height: 1.5rem;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--page);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.field-row input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--muted);
+  transform: translateY(-50%);
+  transition: left 0.15s ease, background-color 0.15s ease;
+}
+
+.field-row input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.field-row input[type="checkbox"]:checked::before {
+  left: calc(100% - 1.1rem - 3px);
+  background: var(--surface);
+}
+
+.field-row input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field-row input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .field-row input:focus,
@@ -260,6 +304,22 @@ input[type="color"]:focus-visible {
 .suffix-input span {
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+/* Settings that only matter while the end counter is on are hidden entirely. The rule
+   lives here because `.field-row`'s `display: flex` beats the browser's own
+   `[hidden] { display: none }`. Their values are still saved, so turning the counter
+   off and on keeps the tuning. */
+.field-row[hidden] {
+  display: none;
+}
+
+/* Belt and braces for the same three rows: CSS alone follows the switch too, so they
+   stay hidden even if settings.js has not run yet (or a browser is holding an older
+   cached copy of it). `:has()` is ignored by browsers that lack it, which then rely on
+   the `hidden` attribute that settings.js sets. */
+.field-row:has(#show_end_number:not(:checked)) ~ .field-row.end-tuning {
+  display: none;
 }
 
 .version {

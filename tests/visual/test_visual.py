@@ -29,6 +29,21 @@ def _background(page) -> str:
     return page.evaluate("getComputedStyle(document.body).backgroundColor")
 
 
+def _font_size(page, selector: str) -> float:
+    return page.evaluate(
+        "sel => parseFloat(getComputedStyle(document.querySelector(sel)).fontSize)", selector
+    )
+
+
+def _no_transitions(page) -> None:
+    """Freeze animations before measuring.
+
+    CSS transitions run on the compositor clock, not the faked JS clock the browser is
+    pinned to, so a size read straight after load could catch the badge mid-animation.
+    """
+    page.add_style_tag(content="*{transition:none !important}")
+
+
 def _log_in(context, server) -> None:
     response = context.request.post(
         f"{server.base_url}/auth/login",
@@ -135,6 +150,7 @@ def test_end_number_is_hidden_at_the_warning_threshold(kiosk):
     # END 6 by the schedule, but only 10:00 remain (< the 900 s warning threshold).
     assert _text(page, "#label") == "Time remaining:"
     assert page.locator("#label .end-badge").count() == 0
+    assert "end-highlight" not in _classes(page)
 
 
 def test_end_number_is_not_shown_when_the_feature_is_off(kiosk):
@@ -142,6 +158,49 @@ def test_end_number_is_not_shown_when_the_feature_is_off(kiosk):
 
     assert _text(page, "#label") == "Time remaining:"
     assert page.locator("#label .end-badge").count() == 0
+    assert "end-highlight" not in _classes(page)
+
+
+def test_end_number_is_enlarged_at_the_start_of_an_end(kiosk):
+    # 19:15 is three minutes into END 4 (19:12–19:26), so still the first half.
+    page = kiosk(support.END_MID, configure=support.enable_end_counter)
+    _no_transitions(page)
+
+    assert "end-highlight" in _classes(page)
+    # Enlarged by 1.5× the 8vw status size; the countdown shrinks to 75% of its 32vw.
+    assert _font_size(page, "#label") == pytest.approx(1280 * 0.08 * 1.5, rel=0.01)
+    assert _font_size(page, "#timer") == pytest.approx(1280 * 0.32 * 0.75, rel=0.01)
+
+
+def test_end_number_returns_to_normal_halfway_through_the_end(kiosk):
+    # END 4's halfway point is 19:19; the kiosk's own tick() shrinks the badge.
+    page = kiosk(support.END_HALF_BEFORE, configure=support.enable_end_counter)
+    _no_transitions(page)
+    assert "end-highlight" in _classes(page)
+
+    page.clock.fast_forward(1000)
+
+    assert "end-highlight" not in _classes(page)
+    assert _text(page, "#label") == "END 4"
+    # Back to the plain status size and the configured countdown size.
+    assert _font_size(page, "#label") == pytest.approx(1280 * 0.08, rel=0.01)
+    assert _font_size(page, "#timer") == pytest.approx(1280 * 0.32, rel=0.01)
+
+
+def test_enlarged_end_number_does_not_press_against_the_edges(kiosk):
+    # The kiosk is 1280x800 in the tests but a real display is 1080p, where the layout is
+    # much tighter: the enlarged badge must still fit above the countdown.
+    page = kiosk(support.END_MID, configure=support.enable_end_counter)
+    _no_transitions(page)
+
+    for width, height in [(1280, 800), (1920, 1080)]:
+        page.set_viewport_size({"width": width, "height": height})
+        top = page.evaluate(
+            "document.querySelector('#label .end-badge').getBoundingClientRect().top"
+        )
+        bottom = page.evaluate("document.querySelector('#message').getBoundingClientRect().bottom")
+        assert top >= 0, f"badge clipped at the top at {width}x{height}"
+        assert bottom <= height, f"message pushed off the bottom at {width}x{height}"
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +308,28 @@ def test_admin_saves_a_time_per_end(open_page):
     assert saved["end_minutes"] == 12
 
 
+def test_end_tuning_fields_follow_the_end_counter_setting(open_page):
+    page, server, context = open_page(support.DEFAULT_INSTANT, "/login.html")
+    _log_in(context, server)
+    page.goto(server.base_url + "/settings.html")
+    page.wait_for_selector("#configForm")
+
+    # Nothing to tune while the end counter is off.
+    assert page.is_disabled("#end_highlight_percent")
+    assert page.is_disabled("#end_highlight_scale")
+    assert page.is_disabled("#end_highlight_timer_percent")
+
+    page.check("#show_end_number")
+    assert page.is_enabled("#end_highlight_percent")
+    assert page.is_enabled("#end_highlight_scale")
+    assert page.is_enabled("#end_highlight_timer_percent")
+
+    # Their values are still saved while disabled, so switching it off keeps the tuning.
+    page.uncheck("#show_end_number")
+    assert page.input_value("#end_highlight_percent") == "50"
+    assert page.is_disabled("#end_highlight_percent")
+
+
 def test_settings_page_loads_the_current_config(open_page):
     page, server, context = open_page(support.DEFAULT_INSTANT, "/login.html")
     _log_in(context, server)
@@ -259,8 +340,12 @@ def test_settings_page_loads_the_current_config(open_page):
     assert page.input_value("#pre_draw_warning_threshold") == "300"
     assert page.is_checked("#show_admin_url")
     assert page.is_checked("#dynamic_timer_format")
-    # The end counter ships off.
+    # The end counter ships off, with the enlarged-end defaults behind it.
     assert not page.is_checked("#show_end_number")
+    assert page.input_value("#end_highlight_percent") == "50"
+    assert page.input_value("#end_highlight_scale") == "1.5"
+    assert page.input_value("#end_highlight_timer_percent") == "75"
+    assert page.is_disabled("#end_highlight_percent")
     # The idle message colour is the base column; its input name must match it exactly.
     assert page.input_value('input[name="message_color"]') == "#eeeeee"
 
@@ -299,6 +384,12 @@ def test_kiosk_end_number_screenshot(kiosk, screenshot):
 
 
 @pytest.mark.visual
+def test_kiosk_end_number_second_half_screenshot(kiosk, screenshot):
+    page = kiosk(support.END_SECOND_HALF, configure=support.enable_end_counter)
+    screenshot(page, "kiosk-end-second-half")
+
+
+@pytest.mark.visual
 def test_admin_page_screenshot(open_page, screenshot):
     page, server, context = open_page(support.DEFAULT_INSTANT, "/login.html")
     _log_in(context, server)
@@ -316,3 +407,17 @@ def test_settings_page_screenshot(open_page, screenshot):
     page.wait_for_selector("#configForm")
 
     screenshot(page, "settings")
+
+
+@pytest.mark.visual
+def test_settings_end_counter_screenshot(open_page, screenshot):
+    # The end-counter card sits below the fold, so scroll it into view and baseline that.
+    page, server, context = open_page(
+        support.DEFAULT_INSTANT, "/login.html", support.enable_end_counter
+    )
+    _log_in(context, server)
+    page.goto(server.base_url + "/settings.html")
+    page.wait_for_selector("#configForm")
+    page.locator("#end_highlight_timer_percent").scroll_into_view_if_needed()
+
+    screenshot(page, "settings-end-counter")

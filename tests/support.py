@@ -80,8 +80,12 @@ RUNNING = "2026-10-21T19:30:00"
 WARNING = "2026-10-21T19:50:00"
 #: Exactly 14 minutes into the 18:30 draw: the first second of END 2 (14-minute ends).
 END_TWO = "2026-10-21T18:44:00"
-#: Late in the fourth end of the same draw (45 minutes elapsed).
+#: Three minutes into END 4 (19:12–19:26): still the enlarged first half of the end.
 END_MID = "2026-10-21T19:15:00"
+#: One second before END 4's halfway point (19:19), so a single tick lands on it.
+END_HALF_BEFORE = "2026-10-21T19:18:59"
+#: Seven minutes into END 4: the second half, where the badge returns to its normal size.
+END_SECOND_HALF = "2026-10-21T19:19:00"
 #: 5 minutes after the 18:30 draw ended.
 COMPLETE = "2026-10-21T20:05:00"
 #: Exactly 600 s after the draw ended — the last second of ``complete``.

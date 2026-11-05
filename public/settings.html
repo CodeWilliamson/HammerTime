@@ -96,6 +96,10 @@
           </div>
           <input type="checkbox" id="dynamic_timer_format" name="dynamic_timer_format" />
         </div>
+      </section>
+
+      <section class="card">
+        <h2>End counter</h2>
         <div class="field-row">
           <div class="field-text">
             <label for="show_end_number">Show end number</label>
@@ -106,6 +110,47 @@
             </p>
           </div>
           <input type="checkbox" id="show_end_number" name="show_end_number" />
+        </div>
+        <div class="field-row end-tuning" hidden>
+          <div class="field-text">
+            <label for="end_highlight_percent">Enlarge a new end for</label>
+            <p class="field-hint">
+              Each new end starts with the number enlarged to draw attention, then it returns to
+              its normal size. This is how much of the end it stays enlarged: 50 is the first
+              half, 0 never enlarges it.
+            </p>
+          </div>
+          <div class="suffix-input">
+            <input type="number" min="0" max="100" step="5" id="end_highlight_percent" name="end_highlight_percent" placeholder="50" />
+            <span>%</span>
+          </div>
+        </div>
+        <div class="field-row end-tuning" hidden>
+          <div class="field-text">
+            <label for="end_highlight_scale">Enlarged size</label>
+            <p class="field-hint">
+              How much bigger the end number is while enlarged, relative to the status size
+              (1.5 = 150%).
+            </p>
+          </div>
+          <div class="suffix-input">
+            <input type="number" min="1" max="3" step="0.1" id="end_highlight_scale" name="end_highlight_scale" placeholder="1.5" />
+            <span>&times;</span>
+          </div>
+        </div>
+        <div class="field-row end-tuning" hidden>
+          <div class="field-text">
+            <label for="end_highlight_timer_percent">Countdown size while enlarged</label>
+            <p class="field-hint">
+              The countdown shrinks to make room for the bigger end number. 100% leaves it
+              unchanged, which can push the top of the display off the screen if the end number
+              is very large.
+            </p>
+          </div>
+          <div class="suffix-input">
+            <input type="number" min="50" max="100" step="5" id="end_highlight_timer_percent" name="end_highlight_timer_percent" placeholder="75" />
+            <span>%</span>
+          </div>
         </div>
       </section>
 

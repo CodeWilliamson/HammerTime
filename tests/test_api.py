@@ -399,6 +399,26 @@ def test_config_round_trips_the_end_counter_flag(auth_client):
     assert auth_client.get("/api/timer/config").json()["show_end_number"] == 1
 
 
+def test_config_round_trips_the_end_highlight_settings(auth_client):
+    """How long a new end stays enlarged, how big it gets and how far the timer shrinks."""
+    config = auth_client.get("/api/timer/config").json()
+    assert config["end_highlight_percent"] == 50
+    assert config["end_highlight_scale"] == 1.5
+    assert config["end_highlight_timer_percent"] == 75
+
+    payload = {
+        "end_highlight_percent": 25,
+        "end_highlight_scale": 2,
+        "end_highlight_timer_percent": 70,
+    }
+    assert auth_client.put("/api/timer/config", json=payload).status_code == 204
+
+    config = auth_client.get("/api/timer/config").json()
+    assert config["end_highlight_percent"] == 25
+    assert config["end_highlight_scale"] == 2
+    assert config["end_highlight_timer_percent"] == 70
+
+
 @pytest.mark.parametrize("body", [{}, {"unknown": "value"}])
 def test_config_rejects_updates_without_known_fields(auth_client, body):
     response = auth_client.put("/api/timer/config", json=body)

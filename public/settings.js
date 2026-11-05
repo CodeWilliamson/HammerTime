@@ -178,12 +178,27 @@ function isDirty() {
 }
 
 function refreshState() {
+  syncEndCounterFields();
   const dirty = isDirty();
   document.getElementById("saveBtn").disabled = !dirty;
   document.getElementById("resetBtn").disabled = !dirty;
   if (dirty) setStatus("Unsaved changes", "pending");
   else if (document.getElementById("configStatus").dataset.kind === "pending") setStatus("");
   updatePreview();
+}
+
+// The three "enlarged end number" fields only mean something with the end counter on,
+// so their rows are hidden (and the inputs disabled) while it is unchecked. Their values
+// are still part of the saved config — getFormData() walks form.elements, which includes
+// disabled controls — so switching the counter off and on again keeps the tuning.
+function syncEndCounterFields() {
+  const form = document.getElementById("configForm");
+  const enabled = form.show_end_number.checked;
+  for (const name of ["end_highlight_percent", "end_highlight_scale", "end_highlight_timer_percent"]) {
+    const input = form[name];
+    input.disabled = !enabled;
+    input.closest(".field-row").hidden = !enabled;
+  }
 }
 
 function setStatus(text, kind = "") {

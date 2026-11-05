@@ -40,7 +40,7 @@ function applyLocalTimer() {
   timerState.targetTimestamp = local.targetTime;
   timerState.timeRemaining = Math.floor((local.targetTime - Date.now()) / 1000);
   timerState.status = timerState.timeRemaining > 0 ? "running" : "complete";
-  timerState.label = timerState.status === "running" ? "Time remaining:" : "Time's Up!";
+  timerState.label = timerState.status === "running" ? "Time Remaining" : "Time's Up!";
   timerState.message = local.message;
   localDelete.hidden = !timerState.isLocal;
   return true;
@@ -69,6 +69,28 @@ function applyConfig(config) {
   window.dynamic_timer_format = config.dynamic_timer_format !== 0
   // Off by default, so unlike the flags above it must not be inferred from `undefined`.
   window.show_end_number = Boolean(config.show_end_number)
+
+  // How long the end number stays enlarged, how much bigger it gets and how much the
+  // countdown shrinks to make room. Clamped here so a stale or hand-edited value can
+  // never push the kiosk layout off the screen.
+  window.end_highlight_percent = clampNumber(config.end_highlight_percent, 0, 100, 50)
+  root.style.setProperty(
+    "--end-highlight-scale",
+    String(clampNumber(config.end_highlight_scale, 1, 3, 1.5))
+  )
+  root.style.setProperty(
+    "--end-highlight-timer-scale",
+    String(clampNumber(config.end_highlight_timer_percent, 50, 100, 75) / 100)
+  )
+}
+
+// Number(value) but with usable defaults: an absent/blank setting keeps `fallback`
+// instead of collapsing to 0 (`Number(null) === 0`).
+function clampNumber(value, min, max, fallback) {
+  if (value === null || value === undefined || value === "") return fallback
+  const n = Number(value)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(max, Math.max(min, n))
 }
 
 function formatTime(seconds, dynamic=false) {
@@ -99,12 +121,14 @@ function formatTimeOfDay(date) {
   });
 }
 
-// Which END number to show right now, or null. The end boundary and the warning cutoff
-// are evaluated here (not on the server) so the badge appears and disappears on the
+// Which end is being played right now, and whether it is still in its "attention"
+// window (the first end_highlight_percent % of it), or null when there is nothing to
+// show. The end boundary, the enlarged/shrunk switch and the warning cutoff are all
+// evaluated here (not on the server) so the badge appears, grows and shrinks on the
 // exact second instead of waiting for the next 60s push.
-function currentEndNumber() {
+function currentEnd() {
   if (!window.show_end_number) return null;
-  // Local timers have no draw, so they keep "Time remaining:".
+  // Local timers have no draw, so they keep "Time Remaining".
   if (timerState.isLocal || timerState.status !== "running") return null;
   if (!timerState.drawStartMs || !timerState.endMinutes) return null;
   if (
@@ -114,11 +138,15 @@ function currentEndNumber() {
     return null;
   }
 
-  const number =
-    Math.floor((Date.now() - timerState.drawStartMs) / (timerState.endMinutes * 60000)) + 1;
+  const endMs = timerState.endMinutes * 60000;
+  const elapsed = Date.now() - timerState.drawStartMs;
+  const number = Math.floor(elapsed / endMs) + 1;
   // END 1 is never shown; the counter stops at the last end of a game.
   if (number < 2 || number > MAX_ENDS) return null;
-  return number;
+
+  // 0 disables the enlargement entirely; 100 leaves the badge big for the whole end.
+  const percent = window.end_highlight_percent || 0;
+  return { number, highlighted: percent > 0 && elapsed % endMs < (endMs * percent) / 100 };
 }
 
 function render() {
@@ -126,18 +154,21 @@ function render() {
   const timer = document.getElementById("timer");
   const message = document.getElementById("message");
 
-  // While a draw is running the end number replaces the redundant "Time remaining:"
+  // While a draw is running the end number replaces the redundant "Time Remaining"
   // label; every other status keeps its own text.
-  const endNumber = currentEndNumber();
-  if (endNumber == null) {
+  const end = currentEnd();
+  if (end == null) {
     label.textContent = timerState.label;
   } else {
     label.textContent = "";
     const badge = document.createElement("span");
     badge.className = "end-badge";
-    badge.textContent = `END ${endNumber}`;
+    badge.textContent = `END ${end.number}`;
     label.appendChild(badge);
   }
+  // A body class (not an inline size) so CSS can animate both the badge growing and
+  // the countdown shrinking to make room for it.
+  document.body.classList.toggle("end-highlight", end != null && end.highlighted);
   message.textContent = timerState.message || "";
   document.getElementById("local-badge").hidden = !timerState.isLocal;
 
@@ -200,7 +231,7 @@ function tick() {
     // for one tick).
     if (timerState.status === "pre_draw" && now >= timerState.targetTimestamp) {
       timerState.status = "running";
-      timerState.label = "Time remaining:";
+      timerState.label = "Time Remaining";
       if (timerState.endTimestamp) {
         timerState.targetTimestamp = timerState.endTimestamp;
       }
@@ -358,7 +389,7 @@ function applyTimerState(data) {
   } else {
     timerState.label = {
       pre_draw: "Draw starts in:",
-      running: "Time remaining:",
+      running: "Time Remaining",
       complete: "Time's Up!",
     }[data.status] || "No more draws today";
 

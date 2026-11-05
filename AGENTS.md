@@ -85,12 +85,30 @@ Live updates use SSE at `GET /events` (`hammertime/broadcast.py`). There are **n
 
 While a draw is running the kiosk can replace the `Time remaining:` label with an outlined `END n` badge. **The countdown is never covered**, so there is no cycle interval to configure.
 
-- Two settings, both opt-in: `timer_config.show_end_number` (Display Settings → Display Behavior) and a per-draw `end_minutes` (`NULL`/blank = off for that draw, prefilled `14` in the admin form). Enabling the global flag alone changes nothing.
+- Two settings, both opt-in: `timer_config.show_end_number` (Display Settings → **End counter**) and a per-draw `end_minutes` (`NULL`/blank = off for that draw, prefilled `14` in the admin form). Enabling the global flag alone changes nothing.
 - `hammertime/timer_state.py` adds `drawStart`, `endMinutes` and (once there is one) `endNumber` to the `running` payload **only** when both are set — with the feature off the payload is byte-identical to before. `MAX_ENDS = 8` caps the number; END 1 is never shown.
-- The primitives are sent even before END 2, because the end boundary is evaluated in the kiosk's `tick()` (`currentEndNumber()`), not on the server: the badge must flip on the exact second rather than on the next 60s push.
+- The primitives are sent even before END 2, because the end boundary is evaluated in the kiosk's `tick()` (`currentEnd()`), not on the server: the badge must flip (and resize) on the exact second rather than on the next 60s push.
 - The badge is hidden once `timeRemaining < running_warning_threshold`, so the warning palette and the end counter change at the same instant. That check is client-side for the same reason. `MAX_ENDS` is duplicated in `public/app.js` — keep them in sync.
 - Local timers (`localStorage`) never show an end number: they have no draw.
-- The badge inherits the label's colour and `label_font_size`, so there is no end-specific colour/size setting.
+- The badge inherits the label's colour and `label_font_size`, so there is no end-specific colour setting.
+
+### Enlarged at the start of an end
+
+Each new end starts with the badge enlarged to draw attention, then it animates back to normal size partway through. Three settings on the same Display Settings → End counter card:
+
+| field | meaning | default |
+|---|---|---|
+| `end_highlight_percent` | how much of each end stays enlarged (`50` = first half, `0` = never) | `50` |
+| `end_highlight_scale` | how much bigger, relative to `label_font_size` | `1.5` |
+| `end_highlight_timer_percent` | the countdown's size while enlarged, so it shrinks to make room | `75` |
+
+- The tense part is the layout: at the club's `32vw / 8vw / 8vw` on a 1080p screen the centred column is within ~15 px of the top edge, so an enlarged badge without a shrinking countdown **clips off the top**. That is what `end_highlight_timer_percent` is for, and `tests/visual/test_visual.py` asserts the badge and message stay inside the viewport at 1280×800 *and* 1920×1080. Re-check that test before changing any default. The badge's padding (`0.12em` vertical, `0.16em` horizontal) is deliberately tight for the same reason.
+- `render()` toggles a single `body.end-highlight` class; `public/index.html` turns it into the sizes (`calc(var(--label-font-size) * var(--end-highlight-scale))` on `#label`, same shape on `#timer`). The badge scales because it is sized in `em`. Colours and the animation are inherited: `#label` and `#timer` both transition `font-size` for 0.3 s.
+- It has to be a **body class, not an inline size or a re-created element**: `render()` rebuilds the badge node every second, so a transition on the badge itself would restart each tick. The label and the timer are the elements that persist.
+- `applyConfig()` clamps all three values, so a hand-edited config can't produce an invalid `calc()` or a scale that eats the display.
+- The three tuning rows are **hidden**, not dimmed, while `show_end_number` is off: `settings.js` sets the `hidden` attribute, and `settings.css` adds a `:has(#show_end_number:not(:checked)) ~ .end-tuning` rule so CSS alone hides them even before the script runs (or against a stale cached copy). Their values are still saved — `getFormData()` walks `form.elements`, which includes disabled controls.
+- All three settings-page checkboxes are rendered as toggle switches by restyling the real `<input type="checkbox">` (`appearance: none` + a `::before` knob), so labels, keyboard use and `form.elements` keep working.
+
 
 ## Frontend
 
