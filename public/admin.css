@@ -216,6 +216,17 @@
   font-size: 1rem;
 }
 
+/* "Time per end" is hidden unless the end counter is enabled in Display Settings.
+   The wrapper mimics the form's own column layout for its label + input. */
+.end-minutes-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.end-minutes-field[hidden] {
+  display: none;
+}
+
 .modal-content button {
   margin-top: 1rem;
   padding: 0.6rem;

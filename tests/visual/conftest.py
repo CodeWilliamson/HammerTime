@@ -57,8 +57,8 @@ def open_page(browser, server_factory):
     """Factory: start a server frozen at ``instant`` and open ``path`` in a new page."""
     contexts = []
 
-    def _open(instant: str = support.DEFAULT_INSTANT, path: str = "/"):
-        server = server_factory(instant)
+    def _open(instant: str = support.DEFAULT_INSTANT, path: str = "/", configure=None):
+        server = server_factory(instant, configure)
         context = browser.new_context(
             viewport=VIEWPORT,
             locale="en-US",
@@ -85,8 +85,8 @@ def open_page(browser, server_factory):
 def kiosk(open_page):
     """Open the display page and wait until the first timer snapshot is rendered."""
 
-    def _kiosk(instant: str = support.DEFAULT_INSTANT):
-        page, server, _context = open_page(instant, "/")
+    def _kiosk(instant: str = support.DEFAULT_INSTANT, configure=None):
+        page, server, _context = open_page(instant, "/", configure)
         page.wait_for_function(
             "document.getElementById('label').textContent !== 'Loading...'"
         )

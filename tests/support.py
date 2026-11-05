@@ -78,6 +78,10 @@ PRE_DRAW_BOUNDARY = "2026-10-21T18:20:00"
 RUNNING = "2026-10-21T19:30:00"
 #: 10 minutes left: below the default ``running_warning_threshold`` of 900 s.
 WARNING = "2026-10-21T19:50:00"
+#: Exactly 14 minutes into the 18:30 draw: the first second of END 2 (14-minute ends).
+END_TWO = "2026-10-21T18:44:00"
+#: Late in the fourth end of the same draw (45 minutes elapsed).
+END_MID = "2026-10-21T19:15:00"
 #: 5 minutes after the 18:30 draw ended.
 COMPLETE = "2026-10-21T20:05:00"
 #: Exactly 600 s after the draw ended — the last second of ``complete``.
@@ -114,6 +118,22 @@ def seed_database(db_file: Path) -> None:
             """,
             OVERRIDES,
         )
+    finally:
+        connection.close()
+
+
+def enable_end_counter(db_file: Path, end_minutes: int = 14) -> None:
+    """Turn the end counter on for a sandbox database.
+
+    Mirrors what an admin does in the UI: tick "Show end number" in Display Settings and
+    give the draws a time per end. Used as the ``configure`` callback for tests that need
+    the feature on before the server (or the in-process data layer) reads the database.
+    """
+    connection = sqlite3.connect(str(db_file), isolation_level=None)
+    try:
+        connection.execute("UPDATE timer_config SET show_end_number = 1")
+        connection.execute("UPDATE draws SET end_minutes = ?", (end_minutes,))
+        connection.execute("UPDATE draw_overrides SET end_minutes = ?", (end_minutes,))
     finally:
         connection.close()
 
@@ -268,10 +288,16 @@ def _wait_ready(server: Server, timeout: float = 30) -> None:
     raise RuntimeError(f"server did not become ready:\n{server.log()}")
 
 
-def start_server(root: Path, template_db: Path, frozen_now: str = DEFAULT_INSTANT) -> Server:
-    """Start the application against a sandbox copy, frozen at ``frozen_now``."""
+def start_server(root: Path, template_db: Path, frozen_now: str = DEFAULT_INSTANT, configure=None) -> Server:
+    """Start the application against a sandbox copy, frozen at ``frozen_now``.
+
+    ``configure`` is an optional ``callable(db_file)`` run on the sandbox copy before the
+    server starts (e.g. :func:`enable_end_counter`).
+    """
     port = _free_port()
     sandbox = make_sandbox(root, template_db)
+    if configure is not None:
+        configure(sandbox / "data" / "schedule.db")
     log_file = root / "server.log"
     handle = open(log_file, "w")
     process = subprocess.Popen(

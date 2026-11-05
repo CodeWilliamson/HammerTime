@@ -42,9 +42,9 @@ def server_factory(template_db: Path, tmp_path: Path) -> Iterator[Callable[..., 
     """Start servers against sandbox databases; all are stopped at teardown."""
     started: list[support.Server] = []
 
-    def _start(frozen_now: str = support.DEFAULT_INSTANT) -> support.Server:
+    def _start(frozen_now: str = support.DEFAULT_INSTANT, configure=None) -> support.Server:
         root = tmp_path / f"server-{len(started) + 1}"
-        server = support.start_server(root, template_db, frozen_now)
+        server = support.start_server(root, template_db, frozen_now, configure)
         started.append(server)
         return server
 
@@ -107,3 +107,12 @@ def db(template_db: Path, tmp_path: Path, freeze) -> Iterator[object]:
     finally:
         db_module._conn = original
         connection.close()
+
+
+@pytest.fixture
+def end_counter(db):
+    """The sandbox database with the end counter enabled (14-minute ends everywhere)."""
+    db._conn.execute("UPDATE timer_config SET show_end_number = 1")
+    db._conn.execute("UPDATE draws SET end_minutes = 14")
+    db._conn.execute("UPDATE draw_overrides SET end_minutes = 14")
+    return db

@@ -57,6 +57,17 @@ def test_timer_state_follows_the_server_clock(server_factory):
         assert http_client.get("/api/timer/state").json()["status"] == "running"
 
 
+def test_timer_state_exposes_the_end_number_when_enabled(server_factory):
+    server = server_factory(support.END_MID, support.enable_end_counter)
+    with httpx.Client(base_url=server.base_url, timeout=15) as http_client:
+        body = http_client.get("/api/timer/state").json()
+
+    assert body["status"] == "running"
+    assert body["endNumber"] == 4
+    assert body["endMinutes"] == 14
+    assert body["drawStart"].endswith("Z")
+
+
 def test_closest_draw_duration(client):
     assert client.get("/api/timer/closest-draw-duration").json() == {"durationMinutes": 90}
 
@@ -265,6 +276,56 @@ def test_updating_a_missing_draw_still_reports_success(auth_client):
 
 
 # ---------------------------------------------------------------------------
+# Time per end (the kiosk's END n counter)
+# ---------------------------------------------------------------------------
+
+def test_draw_carries_a_time_per_end(auth_client):
+    created = auth_client.post("/api/draws", json=_draw(end_minutes=14))
+    draw_id = created.json()["id"]["id"]
+
+    assert auth_client.get(f"/api/draws/{draw_id}").json()["end_minutes"] == 14
+
+    # Blank/None both mean "no end counter for this draw".
+    assert auth_client.put(f"/api/draws/{draw_id}", json=_draw(end_minutes=None)).status_code == 204
+    assert auth_client.get(f"/api/draws/{draw_id}").json()["end_minutes"] is None
+
+
+def test_draw_without_a_time_per_end_stays_blank(auth_client):
+    created = auth_client.post("/api/draws", json=_draw())
+    draw_id = created.json()["id"]["id"]
+
+    # Existing draws are untouched by the migration, so this must stay NULL.
+    assert auth_client.get(f"/api/draws/{draw_id}").json()["end_minutes"] is None
+
+
+def test_override_carries_a_time_per_end(auth_client):
+    created = auth_client.post(
+        "/api/draw-overrides",
+        json=_override(override_date="2026-11-14", end_minutes=9),
+    )
+    override_id = created.json()["id"]["id"]
+
+    listed = auth_client.get("/api/draws").json()["futureOverrides"]
+    assert [draw["end_minutes"] for draw in listed if draw["id"] == override_id] == [9]
+
+
+@pytest.mark.parametrize("end_minutes", [0, -5, 121, "half"])
+def test_time_per_end_is_validated(auth_client, end_minutes):
+    response = auth_client.post("/api/draws", json=_draw(end_minutes=end_minutes))
+
+    assert response.status_code == 400
+    assert "Time per end" in response.json()["error"]
+
+
+def test_time_per_end_accepts_a_numeric_string(auth_client):
+    # The admin form posts numbers, but the value is normalised either way.
+    created = auth_client.post("/api/draws", json=_draw(end_minutes="14"))
+    draw_id = created.json()["id"]["id"]
+
+    assert auth_client.get(f"/api/draws/{draw_id}").json()["end_minutes"] == 14
+
+
+# ---------------------------------------------------------------------------
 # Draw overrides
 # ---------------------------------------------------------------------------
 
@@ -328,6 +389,14 @@ def test_config_round_trips_the_idle_message_color(auth_client):
     assert updated.status_code == 204
 
     assert auth_client.get("/api/timer/config").json()["message_color"] == "#123456"
+
+
+def test_config_round_trips_the_end_counter_flag(auth_client):
+    # Ships off: the display change is opt-in, like the per-draw time per end.
+    assert auth_client.get("/api/timer/config").json()["show_end_number"] == 0
+
+    assert auth_client.put("/api/timer/config", json={"show_end_number": 1}).status_code == 204
+    assert auth_client.get("/api/timer/config").json()["show_end_number"] == 1
 
 
 @pytest.mark.parametrize("body", [{}, {"unknown": "value"}])

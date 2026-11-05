@@ -1,6 +1,21 @@
 const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 let currentDayIndex = new Date().getDay();
 
+// Set from the display config: the "time per end" field is only meaningful (and only
+// shown) when the end counter is switched on there.
+let endCounterEnabled = false;
+
+async function loadConfig() {
+  try {
+    const res = await fetch("/api/timer/config", { credentials: "include" });
+    if (res.ok) endCounterEnabled = Boolean((await res.json()).show_end_number);
+  } catch {
+    // Leave the field hidden; saving still preserves a draw's existing value.
+  }
+  const container = document.getElementById("endMinutesContainer");
+  if (container) container.hidden = !endCounterEnabled;
+}
+
 // Render the draw calendar from a { drawsForWeek, futureOverrides } payload.
 // Fetched via REST after page load and after each save/delete.
 function renderDraws(data) {
@@ -215,6 +230,7 @@ function openForm(draw = null) {
   form.message.value = draw?.message || "";
   form.start_time.value = draw?.start_time || "";
   form.duration_minutes.value = draw?.duration_minutes || "";
+  form.end_minutes.value = draw?.end_minutes ?? "";
   // Set draw type switch
   setDrawOverride(!!draw?.is_override);
   if (!!draw?.is_override) {
@@ -287,6 +303,17 @@ async function saveDraw(e) {
     form.duration_minutes.focus();
     return;
   }
+  // Blank means "no end counter for this draw". Validated even while the field is
+  // hidden, so a stored value can never be saved back as garbage.
+  const endMinutesRaw = form.end_minutes.value.trim();
+  if (endMinutesRaw !== "") {
+    const endMinutes = Number(endMinutesRaw);
+    if (!Number.isInteger(endMinutes) || endMinutes < 1 || endMinutes > 120) {
+      alert("Time per end must be a whole number between 1 and 120 minutes, or left blank.");
+      form.end_minutes.focus();
+      return;
+    }
+  }
   const overrideDate = form.override_date.value;
   const data = {
     ...(overrideDate ? { override_date: overrideDate } : { day_of_week: form.day_of_week.value }),
@@ -295,6 +322,7 @@ async function saveDraw(e) {
     message: form.message.value,
     start_time: form.start_time.value,
     duration_minutes: duration,
+    end_minutes: endMinutesRaw === "" ? null : Number(endMinutesRaw),
   };
   const endpoint = overrideDate ? `/api/draw-overrides/${form.id.value}` : `/api/draws/${form.id.value}`;
   const res = await fetch(endpoint, {
@@ -372,3 +400,4 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 loadDraws();
+loadConfig();

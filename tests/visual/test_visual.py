@@ -107,6 +107,44 @@ def test_countdown_advances_with_the_clock(kiosk):
 
 
 # ---------------------------------------------------------------------------
+# End counter
+# ---------------------------------------------------------------------------
+
+def test_end_number_replaces_the_status_label(kiosk):
+    page = kiosk(support.END_MID, configure=support.enable_end_counter)
+
+    assert _text(page, "#label") == "END 4"
+    assert page.locator("#label .end-badge").count() == 1
+    # The countdown underneath is untouched.
+    assert _text(page, "#timer") == "45:00"
+
+
+def test_end_number_appears_when_end_two_starts(kiosk):
+    # One second before END 2 there is nothing to show; the kiosk's own tick() flips it,
+    # so the change does not wait for a server push.
+    page = kiosk("2026-10-21T18:43:59", configure=support.enable_end_counter)
+    assert _text(page, "#label") == "Time remaining:"
+
+    page.clock.fast_forward(1000)
+    assert _text(page, "#label") == "END 2"
+
+
+def test_end_number_is_hidden_at_the_warning_threshold(kiosk):
+    page = kiosk(support.WARNING, configure=support.enable_end_counter)
+
+    # END 6 by the schedule, but only 10:00 remain (< the 900 s warning threshold).
+    assert _text(page, "#label") == "Time remaining:"
+    assert page.locator("#label .end-badge").count() == 0
+
+
+def test_end_number_is_not_shown_when_the_feature_is_off(kiosk):
+    page = kiosk(support.END_MID)
+
+    assert _text(page, "#label") == "Time remaining:"
+    assert page.locator("#label .end-badge").count() == 0
+
+
+# ---------------------------------------------------------------------------
 # Live updates and interaction
 # ---------------------------------------------------------------------------
 
@@ -170,6 +208,47 @@ def test_admin_can_log_in_and_create_a_draw(open_page):
     page.wait_for_selector("text=UI Draw")
 
 
+def test_admin_time_per_end_field_follows_the_setting(open_page):
+    # Hidden while the end counter is off, shown once it is enabled.
+    page, server, context = open_page(support.DEFAULT_INSTANT, "/login.html")
+    _log_in(context, server)
+    page.goto(server.base_url + "/admin.html")
+    page.wait_for_selector(".draw-card-abs")
+    page.click(".add-btn")
+    assert not page.is_visible("#endMinutesContainer")
+
+    page, server, context = open_page(
+        support.DEFAULT_INSTANT, "/login.html", support.enable_end_counter
+    )
+    _log_in(context, server)
+    page.goto(server.base_url + "/admin.html")
+    page.wait_for_selector(".draw-card-abs")
+    page.click(".add-btn")
+    assert page.is_visible("#endMinutesContainer")
+
+
+def test_admin_saves_a_time_per_end(open_page):
+    page, server, context = open_page(
+        support.DEFAULT_INSTANT, "/login.html", support.enable_end_counter
+    )
+    _log_in(context, server)
+    page.goto(server.base_url + "/admin.html")
+    page.wait_for_selector(".draw-card-abs")
+
+    page.click(".add-btn")
+    page.fill("input[name=title]", "End Counter Draw")
+    page.select_option("select[name=day_of_week]", "Saturday")
+    page.fill("input[name=start_time]", "08:00")
+    page.fill("input[name=duration_minutes]", "90")
+    page.fill("input[name=end_minutes]", "12")
+    page.click("#drawForm button[type=submit]")
+    page.wait_for_selector("text=End Counter Draw")
+
+    draws = context.request.get(f"{server.base_url}/api/draws").json()["drawsForWeek"]
+    saved = next(draw for draw in draws if draw["title"] == "End Counter Draw")
+    assert saved["end_minutes"] == 12
+
+
 def test_settings_page_loads_the_current_config(open_page):
     page, server, context = open_page(support.DEFAULT_INSTANT, "/login.html")
     _log_in(context, server)
@@ -180,6 +259,8 @@ def test_settings_page_loads_the_current_config(open_page):
     assert page.input_value("#pre_draw_warning_threshold") == "300"
     assert page.is_checked("#show_admin_url")
     assert page.is_checked("#dynamic_timer_format")
+    # The end counter ships off.
+    assert not page.is_checked("#show_end_number")
     # The idle message colour is the base column; its input name must match it exactly.
     assert page.input_value('input[name="message_color"]') == "#eeeeee"
 
@@ -209,6 +290,12 @@ def test_settings_page_loads_the_current_config(open_page):
 )
 def test_kiosk_state_screenshot(kiosk, screenshot, instant, name):
     screenshot(kiosk(instant), f"kiosk-{name}")
+
+
+@pytest.mark.visual
+def test_kiosk_end_number_screenshot(kiosk, screenshot):
+    page = kiosk(support.END_MID, configure=support.enable_end_counter)
+    screenshot(page, "kiosk-end-number")
 
 
 @pytest.mark.visual

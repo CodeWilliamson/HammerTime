@@ -30,6 +30,68 @@ def _message(draw: Optional[Dict[str, Any]]) -> Optional[str]:
     return draw.get("message") if draw else None
 
 
+#: Curling plays a fixed number of ends, so the counter stops there even on a draw long
+#: enough to imply more. Keep in sync with ``MAX_ENDS`` in ``public/app.js``.
+MAX_ENDS = 8
+
+
+def end_number_at(now: datetime, draw_start: datetime, end_minutes: Any) -> Optional[int]:
+    """Which end is being played at ``now`` (1-based), or ``None`` when unavailable.
+
+    ``None`` means "nothing to display": the first end is never shown (END 2 is the
+    first useful number), and the counter stops at :data:`MAX_ENDS`.
+    """
+    end_seconds = _end_seconds(end_minutes)
+    if end_seconds is None:
+        return None
+
+    number = int((now - draw_start).total_seconds() // end_seconds) + 1
+    if number < 2 or number > MAX_ENDS:
+        return None
+    return number
+
+
+def _end_seconds(end_minutes: Any) -> Optional[float]:
+    if not end_minutes:
+        return None
+    try:
+        seconds = float(end_minutes) * 60
+    except (TypeError, ValueError):
+        return None
+    return seconds if seconds > 0 else None
+
+
+def _end_counter_fields(
+    config: Optional[Dict[str, Any]],
+    draw: Dict[str, Any],
+    now: datetime,
+    draw_start: datetime,
+) -> Dict[str, Any]:
+    """END n payload fields for a running draw, or ``{}`` when the counter is off.
+
+    Only the schedule primitives are sent (:class:`MAX_ENDS`, the warning threshold and
+    the once-a-second refresh are the client's job), so the kiosk's ``tick()`` can hide
+    the badge at the warning threshold without waiting for the next server push.
+    """
+    if not config or not config.get("show_end_number"):
+        return {}
+
+    if _end_seconds(draw.get("end_minutes")) is None:
+        return {}
+
+    # The primitives are sent for the whole running phase — even before END 2 — so the
+    # kiosk can flip the badge on the exact second instead of waiting for a push.
+    fields: Dict[str, Any] = {
+        "drawStart": js_isoformat(draw_start),
+        "endMinutes": int(draw["end_minutes"]),
+    }
+
+    number = end_number_at(now, draw_start, draw["end_minutes"])
+    if number is not None:
+        fields["endNumber"] = number
+    return fields
+
+
 def get_timer_state() -> Dict[str, Any]:
     """Compute the current display state (idle/waiting/pre_draw/running/complete)."""
     config = get_full_config()
@@ -50,13 +112,15 @@ def get_timer_state() -> Dict[str, Any]:
         seconds_until_start = math.floor((draw_start - now).total_seconds())
 
         if now >= draw_start and now < draw_end:
-            return {
+            payload = {
                 "status": "running",
                 "drawLabel": next_draw["title"],
                 "drawMessage": _message(next_draw),
                 "targetTime": js_isoformat(draw_end),
                 **state,
             }
+            payload.update(_end_counter_fields(config, next_draw, now, draw_start))
+            return payload
 
         if 0 < seconds_until_start <= 600:
             return {

@@ -7,4 +7,4 @@ Keep it at a version that is >= the deployed ``schema_version``; bump it wheneve
 new migration file is added.
 """
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"

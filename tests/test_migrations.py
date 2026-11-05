@@ -52,6 +52,7 @@ TIMER_CONFIG_COLUMNS = [
     "show_admin_url",
     "dynamic_timer_format",
     "message_color",
+    "show_end_number",
 ]
 
 
@@ -109,6 +110,7 @@ def test_fresh_migration_creates_the_expected_schema(tmp_path):
         "message",
         "start_time",
         "duration_minutes",
+        "end_minutes",
     ]
     assert [row[1] for row in _query(db_file, "PRAGMA table_info(draw_overrides)")] == [
         "id",
@@ -117,6 +119,7 @@ def test_fresh_migration_creates_the_expected_schema(tmp_path):
         "message",
         "start_time",
         "duration_minutes",
+        "end_minutes",
     ]
 
 
@@ -139,10 +142,11 @@ def test_default_config_is_the_documented_starting_point(tmp_path):
         workdir / "data" / "schedule.db",
         "SELECT background_color_warning, background_color_critical, "
         "pre_draw_warning_threshold, running_warning_threshold, "
-        "show_admin_url, dynamic_timer_format, message_color FROM timer_config",
+        "show_admin_url, dynamic_timer_format, message_color, show_end_number "
+        "FROM timer_config",
     )[0]
 
-    assert row == ("#ffae00", "#ff0000", 300, 900, 1, 1, "#eeeeee")
+    assert row == ("#ffae00", "#ff0000", 300, 900, 1, 1, "#eeeeee", 0)
 
 
 # ---------------------------------------------------------------------------

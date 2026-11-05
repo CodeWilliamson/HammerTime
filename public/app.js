@@ -6,11 +6,17 @@ let timerState = {
   adminUrl: "",
   ipTimeout: null,
   show_admin_url: true,
-  isLocal: false
+  isLocal: false,
+  // End counter primitives, refreshed from each timer_state payload.
+  drawStartMs: null,
+  endMinutes: null
 };
 
 const LOCAL_KEY = "localTimer"; // { targetTime (ms), message }
 const LOCAL_COMPLETE_MS = 10 * 60 * 1000; // matches the central 'complete' window
+
+// Keep in sync with MAX_ENDS in hammertime/timer_state.py.
+const MAX_ENDS = 8;
 
 function getLocalTimer() {
   try {
@@ -61,6 +67,8 @@ function applyConfig(config) {
   document.getElementById("ip-display").hidden = config.show_admin_url === 0
   timerState.show_admin_url = config.show_admin_url !== 0
   window.dynamic_timer_format = config.dynamic_timer_format !== 0
+  // Off by default, so unlike the flags above it must not be inferred from `undefined`.
+  window.show_end_number = Boolean(config.show_end_number)
 }
 
 function formatTime(seconds, dynamic=false) {
@@ -91,12 +99,45 @@ function formatTimeOfDay(date) {
   });
 }
 
+// Which END number to show right now, or null. The end boundary and the warning cutoff
+// are evaluated here (not on the server) so the badge appears and disappears on the
+// exact second instead of waiting for the next 60s push.
+function currentEndNumber() {
+  if (!window.show_end_number) return null;
+  // Local timers have no draw, so they keep "Time remaining:".
+  if (timerState.isLocal || timerState.status !== "running") return null;
+  if (!timerState.drawStartMs || !timerState.endMinutes) return null;
+  if (
+    timerState.timeRemaining != null &&
+    timerState.timeRemaining < (window['running_warning_threshold'] || 900)
+  ) {
+    return null;
+  }
+
+  const number =
+    Math.floor((Date.now() - timerState.drawStartMs) / (timerState.endMinutes * 60000)) + 1;
+  // END 1 is never shown; the counter stops at the last end of a game.
+  if (number < 2 || number > MAX_ENDS) return null;
+  return number;
+}
+
 function render() {
   const label = document.getElementById("label");
   const timer = document.getElementById("timer");
   const message = document.getElementById("message");
 
-  label.textContent = timerState.label;
+  // While a draw is running the end number replaces the redundant "Time remaining:"
+  // label; every other status keeps its own text.
+  const endNumber = currentEndNumber();
+  if (endNumber == null) {
+    label.textContent = timerState.label;
+  } else {
+    label.textContent = "";
+    const badge = document.createElement("span");
+    badge.className = "end-badge";
+    badge.textContent = `END ${endNumber}`;
+    label.appendChild(badge);
+  }
   message.textContent = timerState.message || "";
   document.getElementById("local-badge").hidden = !timerState.isLocal;
 
@@ -284,6 +325,11 @@ function applyTimerState(data) {
     // tick() computes timeRemaining from targetTimestamp each second, so this
     // stays smooth — no 5s snap-jump of the seconds.
     timerState.targetTimestamp = new Date(data.targetTime).getTime();
+
+    // End counter primitives. Absent (feature off, no time per end, or not running)
+    // means "no END badge", so these are always assigned rather than conditionally.
+    timerState.drawStartMs = data.drawStart ? new Date(data.drawStart).getTime() : null;
+    timerState.endMinutes = data.endMinutes || null;
     
 
     // Remember the draw's end time so tick() can switch the countdown target

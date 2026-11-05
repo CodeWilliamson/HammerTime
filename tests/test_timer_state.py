@@ -148,3 +148,89 @@ def test_js_isoformat_matches_javascript():
 
     assert text.endswith(".012Z")
     assert _local(text) == moment
+
+
+# ---------------------------------------------------------------------------
+# End counter ("END n" replaces the status label while a draw is running)
+# ---------------------------------------------------------------------------
+
+def test_end_counter_payload_starts_at_end_two(end_counter, freeze):
+    freeze(support.END_TWO)
+    state = timer_state.get_timer_state()
+
+    assert state["status"] == "running"
+    assert state["endNumber"] == 2
+    assert state["endMinutes"] == 14
+    assert _local(state["drawStart"]) == datetime(2026, 10, 21, 18, 30)
+    # The end fields are additive: the running key set is otherwise unchanged.
+    assert set(state) == {
+        "status",
+        "drawLabel",
+        "drawMessage",
+        "targetTime",
+        "drawStart",
+        "endMinutes",
+        "endNumber",
+        "adminUrl",
+    }
+
+
+def test_end_number_is_absent_one_second_before_end_two(end_counter, freeze):
+    # END 1 is never shown, so there is no number yet — but the primitives are already
+    # there, which is what lets the kiosk flip the badge itself on the next second.
+    freeze("2026-10-21T18:43:59")
+    state = timer_state.get_timer_state()
+
+    assert "endNumber" not in state
+    assert "drawStart" in state
+    assert state["endMinutes"] == 14
+
+
+def test_end_number_advances_with_the_draw(end_counter, freeze):
+    freeze(support.END_MID)
+    assert timer_state.get_timer_state()["endNumber"] == 4
+
+
+def test_end_number_stops_at_the_last_end(end_counter, freeze):
+    # 4-minute ends: END 8 starts 28 minutes in, END 9 would start at 32. The 18:30 draw
+    # on this date is the override ("Bonspiel Draw 1"); the weekly draw is excluded.
+    end_counter._conn.execute(
+        "UPDATE draw_overrides SET end_minutes = 4 WHERE title = 'Bonspiel Draw 1'"
+    )
+
+    freeze("2026-10-21T18:58:00")
+    assert timer_state.get_timer_state()["endNumber"] == 8
+
+    freeze("2026-10-21T19:02:00")
+    assert "endNumber" not in timer_state.get_timer_state()
+
+
+def test_end_number_is_absent_when_the_draw_has_no_time_per_end(db, end_counter, freeze):
+    db._conn.execute(
+        "UPDATE draw_overrides SET end_minutes = NULL WHERE title = 'Bonspiel Draw 1'"
+    )
+    freeze(support.END_MID)
+    state = timer_state.get_timer_state()
+
+    assert state["status"] == "running"
+    assert "endNumber" not in state
+    assert "drawStart" not in state
+
+
+def test_end_number_is_absent_when_the_feature_is_disabled(db, end_counter, freeze):
+    db._conn.execute("UPDATE timer_config SET show_end_number = 0")
+    freeze(support.END_MID)
+    state = timer_state.get_timer_state()
+
+    assert state["status"] == "running"
+    # Disabled means the payload is exactly what it was before the feature existed.
+    assert set(state) == {"status", "drawLabel", "drawMessage", "targetTime", "adminUrl"}
+
+
+def test_end_number_is_not_sent_before_the_draw_starts(end_counter, freeze):
+    freeze(support.PRE_DRAW)
+    state = timer_state.get_timer_state()
+
+    assert state["status"] == "pre_draw"
+    assert "endNumber" not in state
+    assert "drawStart" not in state

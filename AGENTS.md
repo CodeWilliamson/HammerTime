@@ -44,7 +44,7 @@ Run from the repo root. All paths (`data/`, `public/`, `db_migrations/`) are res
 - Migrations: `db_migrations/*.sql`, named by semver (e.g. `1.0.0.sql`, `1.5.0.sql`). `python -m hammertime.migrate` applies only migrations newer than the tracked `schema_version` and `<=` the version in `hammertime/__init__.py`; re-running is safe. **Bump `__version__` when adding a migration** — it gates which migrations apply.
 - The connection is autocommit (`isolation_level=None`) and `PRAGMA foreign_keys = ON`, matching better-sqlite3's defaults. Row results are converted to plain dicts with `sqlite3.Row`.
 - `data/.gitkeep` is tracked; `data/schedule.db` is local/untracked — **do not commit it**. It contains the club's real data, so be careful with mutating requests when smoke testing against it.
-- Schema: `draws` (recurring weekly draws), `draw_overrides` (date-specific, e.g. bonspiels), `timer_config`, `users`.
+- Schema: `draws` (recurring weekly draws), `draw_overrides` (date-specific, e.g. bonspiels), `timer_config`, `users`. Draws carry an optional `end_minutes` (the end counter's "time per end"); `NULL` means the counter is off for that draw.
 - `tests/test_migrations.py` asserts the schema is byte-identical to the original Node migrator's output and that running migrations on a copy of an up-to-date database changes nothing.
 
 ## Auth
@@ -81,12 +81,23 @@ Live updates use SSE at `GET /events` (`hammertime/broadcast.py`). There are **n
 - The kiosk (`public/app.js`) mirrors transitions locally in a 1s `tick()` so the display is smooth and survives disconnects, **but `tick()` is the sole writer of `timeRemaining` during a countdown** — letting both `tick()` and server pushes write it caused visible flicker (see commit history). Server pushes only re-adopt `timeRemaining` on a status change.
 - `fetchState()` (REST, `/api/timer/state?lastConfigSeenAt=…`) primes the kiosk on load and provides config deltas; it is not a poll loop.
 
+## End counter ("END n")
+
+While a draw is running the kiosk can replace the `Time remaining:` label with an outlined `END n` badge. **The countdown is never covered**, so there is no cycle interval to configure.
+
+- Two settings, both opt-in: `timer_config.show_end_number` (Display Settings → Display Behavior) and a per-draw `end_minutes` (`NULL`/blank = off for that draw, prefilled `14` in the admin form). Enabling the global flag alone changes nothing.
+- `hammertime/timer_state.py` adds `drawStart`, `endMinutes` and (once there is one) `endNumber` to the `running` payload **only** when both are set — with the feature off the payload is byte-identical to before. `MAX_ENDS = 8` caps the number; END 1 is never shown.
+- The primitives are sent even before END 2, because the end boundary is evaluated in the kiosk's `tick()` (`currentEndNumber()`), not on the server: the badge must flip on the exact second rather than on the next 60s push.
+- The badge is hidden once `timeRemaining < running_warning_threshold`, so the warning palette and the end counter change at the same instant. That check is client-side for the same reason. `MAX_ENDS` is duplicated in `public/app.js` — keep them in sync.
+- Local timers (`localStorage`) never show an end number: they have no draw.
+- The badge inherits the label's colour and `label_font_size`, so there is no end-specific colour/size setting.
+
 ## Frontend
 
 - `public/` is served statically by Starlette (`hammertime/responses.py::StaticFiles`, which restores Express's content types, e.g. `application/json; charset=utf-8`). No build step — edit HTML/CSS/JS directly.
 - Entry pages: `index.html` (kiosk timer, public), `login.html`, `admin.html`, `settings.html`.
 - `public/app.js` (kiosk): SSE stream + 1s `tick()` + local timer feature. **Local timer**: stored in `localStorage` (`localTimer`), overrides the central timer per-browser (curling sheets without a networked display); expires `LOCAL_COMPLETE_MS` (10 min) after its target.
-- `public/admin.js`: has **no live connection** — it fetches the schedule via REST (`loadDraws()`) on load/resize and immediately after its own save/delete. Other admins' changes only appear on next page load (accepted trade-off; the schedule is not broadcast).
+- `public/admin.js`: has **no live connection** — it fetches the schedule via REST (`loadDraws()`) on load/resize and immediately after its own save/delete. Other admins' changes only appear on next page load (accepted trade-off; the schedule is not broadcast). It also reads `/api/timer/config` once on load, only to decide whether the "Time per end" field is shown — that field is hidden unless the end counter is enabled in Display Settings.
 - `public/settings.js`: SSE for `config` only, so config edits sync across clients live.
 - Most DOM elements are fetched at module scope — client JS requires the DOM element ids in its HTML to exist; check both when adding UI.
 

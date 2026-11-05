@@ -82,6 +82,27 @@ def js_number_to_int(value: Any) -> Optional[int]:
         return None
 
 
+def normalise_end_minutes(value: Any) -> Optional[int]:
+    """Coerce the per-draw "time per end" to minutes, or ``None`` when unset.
+
+    The admin form submits an empty string for "no time per end" (the feature is off
+    for that draw) and a number otherwise, so both spellings of "empty" collapse to
+    ``NULL``. Anything else must be a whole number of minutes in a sane range; the
+    route turns the ``ValueError`` into a 400, like the other draw validation.
+    """
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+
+    try:
+        minutes = int(float(value))
+    except (TypeError, ValueError):
+        raise ValueError("Time per end must be a whole number of minutes") from None
+
+    if minutes < 1 or minutes > 120:
+        raise ValueError("Time per end must be between 1 and 120 minutes")
+    return minutes
+
+
 # ---------------------------------------------------------------------------
 # Current draw
 # ---------------------------------------------------------------------------
@@ -176,7 +197,7 @@ CONFIG_FIELDS = (
     "message_color", "message_color_running", "message_color_warning", "message_color_critical",
     "timer_font_size", "label_font_size", "message_font_size",
     "pre_draw_warning_threshold", "running_warning_threshold",
-    "show_admin_url", "dynamic_timer_format",
+    "show_admin_url", "dynamic_timer_format", "show_end_number",
 )
 
 
@@ -216,8 +237,8 @@ def update_config(updates: Dict[str, Any]) -> bool:
 def add_draw_override(draw: Dict[str, Any]) -> Dict[str, Any]:
     cursor = _conn.execute(
         """
-        INSERT INTO draw_overrides (date, title, message, start_time, duration_minutes)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO draw_overrides (date, title, message, start_time, duration_minutes, end_minutes)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             draw.get("override_date"),
@@ -225,6 +246,7 @@ def add_draw_override(draw: Dict[str, Any]) -> Dict[str, Any]:
             draw.get("message"),
             draw.get("start_time"),
             draw.get("duration_minutes"),
+            normalise_end_minutes(draw.get("end_minutes")),
         ),
     )
     return {"id": cursor.lastrowid, "override": True}
@@ -236,8 +258,8 @@ def add_draw(draw: Dict[str, Any]) -> Dict[str, Any]:
 
     cursor = _conn.execute(
         """
-        INSERT INTO draws (day_of_week, title, message, start_time, duration_minutes)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO draws (day_of_week, title, message, start_time, duration_minutes, end_minutes)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             draw.get("day_of_week"),
@@ -245,6 +267,7 @@ def add_draw(draw: Dict[str, Any]) -> Dict[str, Any]:
             draw.get("message"),
             draw.get("start_time"),
             draw.get("duration_minutes"),
+            normalise_end_minutes(draw.get("end_minutes")),
         ),
     )
     return {"id": cursor.lastrowid, "override": False}
@@ -257,7 +280,8 @@ def update_draw(draw_id: Any, updates: Dict[str, Any]) -> bool:
     cursor = _conn.execute(
         """
         UPDATE draws
-        SET day_of_week = ?, title = ?, message = ?, start_time = ?, duration_minutes = ?
+        SET day_of_week = ?, title = ?, message = ?, start_time = ?, duration_minutes = ?,
+            end_minutes = ?
         WHERE id = ?
         """,
         (
@@ -266,6 +290,7 @@ def update_draw(draw_id: Any, updates: Dict[str, Any]) -> bool:
             updates.get("message"),
             updates.get("start_time"),
             updates.get("duration_minutes"),
+            normalise_end_minutes(updates.get("end_minutes")),
             draw_id,
         ),
     )
@@ -289,7 +314,8 @@ def update_draw_override(draw_id: Any, updates: Dict[str, Any]) -> bool:
     cursor = _conn.execute(
         """
         UPDATE draw_overrides
-        SET date = ?, title = ?, message = ?, start_time = ?, duration_minutes = ?
+        SET date = ?, title = ?, message = ?, start_time = ?, duration_minutes = ?,
+            end_minutes = ?
         WHERE id = ?
         """,
         (
@@ -299,6 +325,7 @@ def update_draw_override(draw_id: Any, updates: Dict[str, Any]) -> bool:
             updates.get("message"),
             updates.get("start_time"),
             updates.get("duration_minutes"),
+            normalise_end_minutes(updates.get("end_minutes")),
             draw_id,
         ),
     )

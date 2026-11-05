@@ -63,6 +63,20 @@
       vertical-align: super;
     }
 
+    /* End counter: replaces the "Time remaining:" label while a draw is running.
+       Colours are inherited, so it follows the running/warning/critical theme. */
+    #label .end-badge {
+      display: inline-block;
+      padding: 0.2em 0.2em 0.2em 0.2em;
+      border: 0.06em solid currentColor;
+      border-radius: 0.2em;
+      font-weight: bold;
+      letter-spacing: 0.12em;
+      text-indent: 0.12em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
     #label {
       font-size: 5vw;
       margin-bottom: 2vh;
