@@ -282,6 +282,16 @@
         <input type="button" value="+" onclick="document.getElementById('local-duration').stepUp(5)" class="btn">
 
       </div>
+      <!-- Only shown when Display Settings -> End counter is on, like the admin's
+           "Time per end" field. -->
+      <div id="local-end-row" hidden>
+        <label>Minutes per end</label>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+          <input type="button" value="-" onclick="document.getElementById('local-end-minutes').stepDown(1)" class="btn">
+          <input id="local-end-minutes" type="number" min="1" max="60" required disabled>
+          <input type="button" value="+" onclick="document.getElementById('local-end-minutes').stepUp(1)" class="btn">
+        </div>
+      </div>
       <!-- <label>Message (optional)
         <input id="local-message" type="text" maxlength="100">
       </label> -->

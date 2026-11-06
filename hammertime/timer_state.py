@@ -32,7 +32,7 @@ def _message(draw: Optional[Dict[str, Any]]) -> Optional[str]:
 
 #: Curling plays a fixed number of ends, so the counter stops there even on a draw long
 #: enough to imply more. Keep in sync with ``MAX_ENDS`` in ``public/app.js``.
-MAX_ENDS = 8
+MAX_ENDS = 10
 
 
 def end_number_at(now: datetime, draw_start: datetime, end_minutes: Any) -> Optional[int]:
@@ -61,6 +61,21 @@ def _end_seconds(end_minutes: Any) -> Optional[float]:
     return seconds if seconds > 0 else None
 
 
+def effective_end_minutes(config: Optional[Dict[str, Any]], draw: Dict[str, Any]) -> Any:
+    """The end length to display for ``draw``.
+
+    A system-wide override (Display Settings → End counter) replaces every draw's stored
+    ``end_minutes`` at read time; the per-draw values stay in the database and come back
+    when the override is switched off. A missing/invalid override value falls back to the
+    draw's own value rather than disabling the badge unexpectedly.
+    """
+    if config and config.get("use_system_end_minutes"):
+        system_minutes = config.get("system_end_minutes")
+        if _end_seconds(system_minutes) is not None:
+            return system_minutes
+    return draw.get("end_minutes")
+
+
 def _end_counter_fields(
     config: Optional[Dict[str, Any]],
     draw: Dict[str, Any],
@@ -76,17 +91,18 @@ def _end_counter_fields(
     if not config or not config.get("show_end_number"):
         return {}
 
-    if _end_seconds(draw.get("end_minutes")) is None:
+    end_minutes = effective_end_minutes(config, draw)
+    if _end_seconds(end_minutes) is None:
         return {}
 
     # The primitives are sent for the whole running phase — even before END 2 — so the
     # kiosk can flip the badge on the exact second instead of waiting for a push.
     fields: Dict[str, Any] = {
         "drawStart": js_isoformat(draw_start),
-        "endMinutes": int(draw["end_minutes"]),
+        "endMinutes": int(end_minutes),
     }
 
-    number = end_number_at(now, draw_start, draw["end_minutes"])
+    number = end_number_at(now, draw_start, end_minutes)
     if number is not None:
         fields["endNumber"] = number
     return fields

@@ -44,7 +44,7 @@ Run from the repo root. All paths (`data/`, `public/`, `db_migrations/`) are res
 - Migrations: `db_migrations/*.sql`, named by semver (e.g. `1.0.0.sql`, `1.5.0.sql`). `python -m hammertime.migrate` applies only migrations newer than the tracked `schema_version` and `<=` the version in `hammertime/__init__.py`; re-running is safe. **Bump `__version__` when adding a migration** — it gates which migrations apply.
 - The connection is autocommit (`isolation_level=None`) and `PRAGMA foreign_keys = ON`, matching better-sqlite3's defaults. Row results are converted to plain dicts with `sqlite3.Row`.
 - `data/.gitkeep` is tracked; `data/schedule.db` is local/untracked — **do not commit it**. It contains the club's real data, so be careful with mutating requests when smoke testing against it.
-- Schema: `draws` (recurring weekly draws), `draw_overrides` (date-specific, e.g. bonspiels), `timer_config`, `users`. Draws carry an optional `end_minutes` (the end counter's "time per end"); `NULL` means the counter is off for that draw.
+- Schema: `draws` (recurring weekly draws), `draw_overrides` (date-specific, e.g. bonspiels), `timer_config`, `users`. Draws carry an optional `end_minutes` (the end counter's "time per end"); `NULL` means the counter is off for that draw unless the system-wide override in `timer_config` supplies one.
 - `tests/test_migrations.py` asserts the schema is byte-identical to the original Node migrator's output and that running migrations on a copy of an up-to-date database changes nothing.
 
 ## Auth
@@ -83,13 +83,14 @@ Live updates use SSE at `GET /events` (`hammertime/broadcast.py`). There are **n
 
 ## End counter ("END n")
 
-While a draw is running the kiosk can replace the `Time remaining:` label with an outlined `END n` badge. **The countdown is never covered**, so there is no cycle interval to configure.
+While a draw is running the kiosk can replace the `Time Remaining` label with an outlined `END n` badge. **The countdown is never covered**, so there is no cycle interval to configure.
 
-- Two settings, both opt-in: `timer_config.show_end_number` (Display Settings → **End counter**) and a per-draw `end_minutes` (`NULL`/blank = off for that draw, prefilled `14` in the admin form). Enabling the global flag alone changes nothing.
-- `hammertime/timer_state.py` adds `drawStart`, `endMinutes` and (once there is one) `endNumber` to the `running` payload **only** when both are set — with the feature off the payload is byte-identical to before. `MAX_ENDS = 8` caps the number; END 1 is never shown.
+- Two settings, both opt-in: `timer_config.show_end_number` (Display Settings → **End counter**) and an end length. By default that length is per draw (`end_minutes`; `NULL`/blank = off for that draw, prefilled `14` in the admin form), so enabling the global flag alone changes nothing.
+- Alternatively, `timer_config.use_system_end_minutes` + `system_end_minutes` (whole minutes, 1–120) apply one end length to **every** draw, including date-specific overrides and local timers, and the admin's per-draw "Time per end" field is hidden. `system_end_minutes` is required while the override is on; both the settings page and `PUT /api/timer/config` reject a blank/out-of-range value. The override is resolved at read time by `effective_end_minutes()` in `hammertime/timer_state.py`, so stored per-draw values are never modified and reappear when it is switched off. A missing/invalid shared value falls back to the draw's own value.
+- `hammertime/timer_state.py` adds `drawStart`, `endMinutes` and (once there is one) `endNumber` to the `running` payload **only** when both are set — with the feature off the payload is byte-identical to before. `MAX_ENDS = 10` caps the number; END 1 is never shown.
 - The primitives are sent even before END 2, because the end boundary is evaluated in the kiosk's `tick()` (`currentEnd()`), not on the server: the badge must flip (and resize) on the exact second rather than on the next 60s push.
 - The badge is hidden once `timeRemaining < running_warning_threshold`, so the warning palette and the end counter change at the same instant. That check is client-side for the same reason. `MAX_ENDS` is duplicated in `public/app.js` — keep them in sync.
-- Local timers (`localStorage`) never show an end number: they have no draw.
+- Local timers (`localStorage`) show an end number too, using the same rules: `startLocalTimer()` records `startTime` and `endMinutes` next to `targetTime`, `applyLocalTimer()` hands them to `timerState.drawStartMs` / `timerState.endMinutes`, and `currentEnd()` therefore needs no local-timer special case. The dialog's **Minutes per end** field is only shown when `show_end_number` is on and the system-wide override is **off** (mirroring the admin's "Time per end") and is deliberately left blank — there is no sensible default, and a leftover value would label the sheet with the wrong ends. With the override on, the field is hidden and `applyLocalTimer()` uses the shared value even for records that already store their own `endMinutes`; switching the override off falls back to that stored value. Leaving the field blank starts a timer with no badge; records saved before this existed behave the same way.
 - The badge inherits the label's colour and `label_font_size`, so there is no end-specific colour setting.
 
 ### Enlarged at the start of an end
@@ -99,14 +100,14 @@ Each new end starts with the badge enlarged to draw attention, then it animates 
 | field | meaning | default |
 |---|---|---|
 | `end_highlight_percent` | how much of each end stays enlarged (`50` = first half, `0` = never) | `50` |
-| `end_highlight_scale` | how much bigger, relative to `label_font_size` | `1.5` |
+| `end_highlight_scale` | how much bigger, relative to `label_font_size` | `2` |
 | `end_highlight_timer_percent` | the countdown's size while enlarged, so it shrinks to make room | `75` |
 
 - The tense part is the layout: at the club's `32vw / 8vw / 8vw` on a 1080p screen the centred column is within ~15 px of the top edge, so an enlarged badge without a shrinking countdown **clips off the top**. That is what `end_highlight_timer_percent` is for, and `tests/visual/test_visual.py` asserts the badge and message stay inside the viewport at 1280×800 *and* 1920×1080. Re-check that test before changing any default. The badge's padding (`0.12em` vertical, `0.16em` horizontal) is deliberately tight for the same reason.
 - `render()` toggles a single `body.end-highlight` class; `public/index.html` turns it into the sizes (`calc(var(--label-font-size) * var(--end-highlight-scale))` on `#label`, same shape on `#timer`). The badge scales because it is sized in `em`. Colours and the animation are inherited: `#label` and `#timer` both transition `font-size` for 0.3 s.
 - It has to be a **body class, not an inline size or a re-created element**: `render()` rebuilds the badge node every second, so a transition on the badge itself would restart each tick. The label and the timer are the elements that persist.
 - `applyConfig()` clamps all three values, so a hand-edited config can't produce an invalid `calc()` or a scale that eats the display.
-- The three tuning rows are **hidden**, not dimmed, while `show_end_number` is off: `settings.js` sets the `hidden` attribute, and `settings.css` adds a `:has(#show_end_number:not(:checked)) ~ .end-tuning` rule so CSS alone hides them even before the script runs (or against a stale cached copy). Their values are still saved — `getFormData()` walks `form.elements`, which includes disabled controls.
+- The tuning rows and the system-wide override are **hidden**, not dimmed, while `show_end_number` is off: `settings.js` sets the `hidden` attribute, and `settings.css` adds a `:has(#show_end_number:not(:checked)) ~ .end-tuning` rule so CSS alone hides them even before the script runs (or against a stale cached copy). The shared **Minutes per end** row is additionally hidden by `:has(#use_system_end_minutes:not(:checked)) ~ .end-system-minutes`. Their values are still saved — `getFormData()` walks `form.elements`, which includes disabled controls — so switching the counter or the override off and on again keeps them.
 - All three settings-page checkboxes are rendered as toggle switches by restyling the real `<input type="checkbox">` (`appearance: none` + a `::before` knob), so labels, keyboard use and `form.elements` keep working.
 
 
@@ -114,8 +115,8 @@ Each new end starts with the badge enlarged to draw attention, then it animates 
 
 - `public/` is served statically by Starlette (`hammertime/responses.py::StaticFiles`, which restores Express's content types, e.g. `application/json; charset=utf-8`). No build step — edit HTML/CSS/JS directly.
 - Entry pages: `index.html` (kiosk timer, public), `login.html`, `admin.html`, `settings.html`.
-- `public/app.js` (kiosk): SSE stream + 1s `tick()` + local timer feature. **Local timer**: stored in `localStorage` (`localTimer`), overrides the central timer per-browser (curling sheets without a networked display); expires `LOCAL_COMPLETE_MS` (10 min) after its target.
-- `public/admin.js`: has **no live connection** — it fetches the schedule via REST (`loadDraws()`) on load/resize and immediately after its own save/delete. Other admins' changes only appear on next page load (accepted trade-off; the schedule is not broadcast). It also reads `/api/timer/config` once on load, only to decide whether the "Time per end" field is shown — that field is hidden unless the end counter is enabled in Display Settings.
+- `public/app.js` (kiosk): SSE stream + 1s `tick()` + local timer feature. **Local timer**: stored in `localStorage` (`localTimer`), overrides the central timer per-browser (curling sheets without a networked display); expires `LOCAL_COMPLETE_MS` (10 min) after its target. The record is `{ targetTime, startTime, endMinutes, message }`.
+- `public/admin.js`: has **no live connection** — it fetches the schedule via REST (`loadDraws()`) on load/resize and immediately after its own save/delete. Other admins' changes only appear on next page load (accepted trade-off; the schedule is not broadcast). It also reads `/api/timer/config` once on load, only to decide whether the "Time per end" field is shown — that field is hidden unless the end counter is enabled in Display Settings and no system-wide override is on.
 - `public/settings.js`: SSE for `config` only, so config edits sync across clients live.
 - Most DOM elements are fetched at module scope — client JS requires the DOM element ids in its HTML to exist; check both when adding UI.
 

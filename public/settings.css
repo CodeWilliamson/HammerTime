@@ -314,11 +314,16 @@ input[type="color"]:focus-visible {
   display: none;
 }
 
-/* Belt and braces for the same three rows: CSS alone follows the switch too, so they
+/* Belt and braces for the same rows: CSS alone follows the switch too, so they
    stay hidden even if settings.js has not run yet (or a browser is holding an older
    cached copy of it). `:has()` is ignored by browsers that lack it, which then rely on
    the `hidden` attribute that settings.js sets. */
 .field-row:has(#show_end_number:not(:checked)) ~ .field-row.end-tuning {
+  display: none;
+}
+
+/* The shared "minutes per end" value is only meaningful while its override is on. */
+.field-row:has(#use_system_end_minutes:not(:checked)) ~ .field-row.end-system-minutes {
   display: none;
 }
 

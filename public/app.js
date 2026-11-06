@@ -12,7 +12,7 @@ let timerState = {
   endMinutes: null
 };
 
-const LOCAL_KEY = "localTimer"; // { targetTime (ms), message }
+const LOCAL_KEY = "localTimer"; // { targetTime (ms), startTime (ms), endMinutes, message }
 const LOCAL_COMPLETE_MS = 10 * 60 * 1000; // matches the central 'complete' window
 
 // Keep in sync with MAX_ENDS in hammertime/timer_state.py.
@@ -32,6 +32,8 @@ function applyLocalTimer() {
   if (local && Date.now() - local.targetTime >= LOCAL_COMPLETE_MS) {
     localStorage.removeItem(LOCAL_KEY);
     timerState.isLocal = false;
+    timerState.drawStartMs = null;
+    timerState.endMinutes = null;
     return false;
   }
   timerState.isLocal = !!local;
@@ -42,6 +44,13 @@ function applyLocalTimer() {
   timerState.status = timerState.timeRemaining > 0 ? "running" : "complete";
   timerState.label = timerState.status === "running" ? "Time Remaining" : "Time's Up!";
   timerState.message = local.message;
+  // A local timer records when it started and its end length, so the END badge counts
+  // ends here exactly as it does for a draw. Records saved before this existed have no
+  // numbers and simply keep the plain label. A system-wide time per end wins over the
+  // record's own value, exactly as it does for draws.
+  timerState.drawStartMs = local.startTime || null;
+  const overrideMinutes = window.use_system_end_minutes ? window.system_end_minutes : null;
+  timerState.endMinutes = overrideMinutes || local.endMinutes || null;
   localDelete.hidden = !timerState.isLocal;
   return true;
 }
@@ -69,6 +78,16 @@ function applyConfig(config) {
   window.dynamic_timer_format = config.dynamic_timer_format !== 0
   // Off by default, so unlike the flags above it must not be inferred from `undefined`.
   window.show_end_number = Boolean(config.show_end_number)
+
+  // A system-wide time per end replaces every draw's own value (and the local timer's),
+  // so the kiosk never has to know which draw is running. Invalid/blank values are
+  // ignored, falling back to the per-draw primitive in the timer_state payload.
+  const systemEndMinutes = Number(config.system_end_minutes)
+  window.system_end_minutes =
+    Number.isInteger(systemEndMinutes) && systemEndMinutes >= 1 && systemEndMinutes <= 120
+      ? systemEndMinutes
+      : null
+  window.use_system_end_minutes = Boolean(config.use_system_end_minutes) && window.system_end_minutes !== null
 
   // How long the end number stays enlarged, how much bigger it gets and how much the
   // countdown shrinks to make room. Clamped here so a stale or hand-edited value can
@@ -128,8 +147,7 @@ function formatTimeOfDay(date) {
 // exact second instead of waiting for the next 60s push.
 function currentEnd() {
   if (!window.show_end_number) return null;
-  // Local timers have no draw, so they keep "Time Remaining".
-  if (timerState.isLocal || timerState.status !== "running") return null;
+  if (timerState.status !== "running") return null;
   if (!timerState.drawStartMs || !timerState.endMinutes) return null;
   if (
     timerState.timeRemaining != null &&
@@ -154,8 +172,8 @@ function render() {
   const timer = document.getElementById("timer");
   const message = document.getElementById("message");
 
-  // While a draw is running the end number replaces the redundant "Time Remaining"
-  // label; every other status keeps its own text.
+  // While a draw (or a local timer) is running the end number replaces the redundant
+  // "Time Remaining" label; every other status keeps its own text.
   const end = currentEnd();
   if (end == null) {
     label.textContent = timerState.label;
@@ -425,6 +443,8 @@ const localDialog = document.getElementById("local-dialog");
 // const localAsk = document.getElementById("local-ask");
 const localForm = document.getElementById("local-form");
 const localDuration = document.getElementById("local-duration");
+const localEndRow = document.getElementById("local-end-row");
+const localEndMinutes = document.getElementById("local-end-minutes");
 const localMessage = document.getElementById("local-message");
 const localDelete = document.getElementById("local-delete");
 let deleteTimeout = null;
@@ -435,6 +455,14 @@ async function showLocalForm() {
   localDialog.returnValue = "";
   localForm.hidden = true;
   localForm.reset();
+  // Minutes per end only matter with the end counter on, so the field follows that
+  // setting. It is hidden entirely when Display Settings supplies one shared value for
+  // every draw (that value wins over anything the local timer could store). It is
+  // deliberately left blank otherwise: there is no sensible default, and a wrong guess
+  // would label the display with ends the sheet is not playing.
+  localEndRow.hidden = !window.show_end_number || window.use_system_end_minutes;
+  localEndMinutes.disabled = localEndRow.hidden;
+  localEndMinutes.value = "";
   localDialog.showModal();
 
   localForm.hidden = false;
@@ -450,9 +478,15 @@ async function showLocalForm() {
 
 function startLocalTimer() {
   const minutes = Number(localDuration.value);
+  const startTime = Date.now();
+  // No end length when the field is hidden (end counter off): the timer then shows the
+  // plain label, and turning the setting on later cannot invent ends mid-game.
+  const endMinutes = localEndRow.hidden ? null : Number(localEndMinutes.value) || null;
   try {
     localStorage.setItem(LOCAL_KEY, JSON.stringify({
-      targetTime: Date.now() + minutes * 60000,
+      targetTime: startTime + minutes * 60000,
+      startTime,
+      endMinutes,
       message: localMessage?.value?.trim()
     }));
     revealDeleteButton();
@@ -477,6 +511,10 @@ localDialog.addEventListener("close", () => {
 localDelete.addEventListener("click", () => {
   if (!confirm("Delete the local timer and return to the main timer?")) return;
   localStorage.removeItem(LOCAL_KEY);
+  // Drop the local timer's end primitives so the central timer's own values are not
+  // inherited between the delete and the /api/timer/state round-trip.
+  timerState.drawStartMs = null;
+  timerState.endMinutes = null;
   localDelete.hidden = true;
   fetchState();
 });

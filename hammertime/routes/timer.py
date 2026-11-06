@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import logging
 logger = logging.getLogger("hammertime.timer")
+from typing import Any, Optional
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
@@ -16,6 +18,30 @@ from hammertime.timer_state import get_timer_state
 from hammertime.web import js_date_to_epoch, read_json
 
 router = APIRouter()
+
+#: Same range the admin draw form accepts for a per-draw "time per end".
+MIN_END_MINUTES = 1
+MAX_END_MINUTES = 120
+
+
+def _flag_enabled(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() not in ("", "0", "false")
+    return bool(value)
+
+
+def _normalise_system_end_minutes(value: Any) -> Optional[int]:
+    """Whole minutes in the supported range, ``None`` for blank, ``ValueError`` otherwise."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    try:
+        minutes = float(value)
+    except (TypeError, ValueError):
+        raise ValueError("system_end_minutes must be a whole number between 1 and 120")
+    if not minutes.is_integer() or not MIN_END_MINUTES <= minutes <= MAX_END_MINUTES:
+        raise ValueError("system_end_minutes must be a whole number between 1 and 120")
+    return int(minutes)
+
 
 
 @router.get("/api/timer/state")
@@ -51,6 +77,31 @@ async def read_config(_: None = Depends(require_auth)):
 async def write_config(request: Request, _: None = Depends(require_auth)):
     """Update timer config fields and push changes live to all clients."""
     updates = await read_json(request)
+    if not isinstance(updates, dict):
+        updates = {}
+
+    # The system-wide time per end is required whenever its override is enabled. Validate
+    # here as well as in the settings page so a hand-crafted request cannot store a value
+    # the kiosk would have to ignore.
+    current = get_full_config() or {}
+    if "system_end_minutes" in updates or "use_system_end_minutes" in updates:
+        override_on = _flag_enabled(
+            updates.get("use_system_end_minutes", current.get("use_system_end_minutes"))
+        )
+        try:
+            minutes = _normalise_system_end_minutes(
+                updates.get("system_end_minutes", current.get("system_end_minutes"))
+            )
+        except ValueError as error:
+            return JSONResponse({"error": str(error)}, status_code=400)
+        if override_on and minutes is None:
+            return JSONResponse(
+                {"error": "system_end_minutes is required when use_system_end_minutes is enabled"},
+                status_code=400,
+            )
+        if "system_end_minutes" in updates:
+            updates["system_end_minutes"] = minutes
+
     if debug_enabled():
         logger.info("Received updates: %s", updates)
 

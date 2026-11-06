@@ -399,11 +399,70 @@ def test_config_round_trips_the_end_counter_flag(auth_client):
     assert auth_client.get("/api/timer/config").json()["show_end_number"] == 1
 
 
+def test_config_round_trips_the_system_end_minutes_override(auth_client):
+    config = auth_client.get("/api/timer/config").json()
+    assert config["use_system_end_minutes"] == 0
+    assert config["system_end_minutes"] is None
+
+    # The settings form submits numbers as strings; the API stores them as integers.
+    assert auth_client.put(
+        "/api/timer/config",
+        json={"use_system_end_minutes": 1, "system_end_minutes": "9"},
+    ).status_code == 204
+
+    config = auth_client.get("/api/timer/config").json()
+    assert config["use_system_end_minutes"] == 1
+    assert config["system_end_minutes"] == 9
+
+    # Turning the override off keeps the value ready for the next time it is enabled.
+    assert auth_client.put(
+        "/api/timer/config", json={"use_system_end_minutes": 0}
+    ).status_code == 204
+    config = auth_client.get("/api/timer/config").json()
+    assert config["use_system_end_minutes"] == 0
+    assert config["system_end_minutes"] == 9
+
+
+def test_config_requires_a_system_end_minutes_value_when_enabled(auth_client):
+    response = auth_client.put("/api/timer/config", json={"use_system_end_minutes": 1})
+
+    assert response.status_code == 400
+    assert "system_end_minutes" in response.json()["error"]
+    assert auth_client.get("/api/timer/config").json()["use_system_end_minutes"] == 0
+
+
+@pytest.mark.parametrize("end_minutes", [0, -5, 121, 12.5, "half"])
+def test_config_rejects_invalid_system_end_minutes(auth_client, end_minutes):
+    response = auth_client.put(
+        "/api/timer/config",
+        json={"use_system_end_minutes": 1, "system_end_minutes": end_minutes},
+    )
+
+    assert response.status_code == 400
+    assert "whole number" in response.json()["error"]
+
+
+def test_config_can_clear_system_end_minutes_while_the_override_is_off(auth_client):
+    assert auth_client.put(
+        "/api/timer/config",
+        json={"use_system_end_minutes": 1, "system_end_minutes": 9},
+    ).status_code == 204
+
+    assert auth_client.put(
+        "/api/timer/config",
+        json={"use_system_end_minutes": 0, "system_end_minutes": ""},
+    ).status_code == 204
+
+    config = auth_client.get("/api/timer/config").json()
+    assert config["use_system_end_minutes"] == 0
+    assert config["system_end_minutes"] is None
+
+
 def test_config_round_trips_the_end_highlight_settings(auth_client):
     """How long a new end stays enlarged, how big it gets and how far the timer shrinks."""
     config = auth_client.get("/api/timer/config").json()
     assert config["end_highlight_percent"] == 50
-    assert config["end_highlight_scale"] == 1.5
+    assert config["end_highlight_scale"] == 2
     assert config["end_highlight_timer_percent"] == 75
 
     payload = {

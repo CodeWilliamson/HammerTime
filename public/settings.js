@@ -195,10 +195,11 @@ function refreshState() {
   updatePreview();
 }
 
-// The three "enlarged end number" fields only mean something with the end counter on,
-// so their rows are hidden (and the inputs disabled) while it is unchecked. Their values
-// are still part of the saved config — getFormData() walks form.elements, which includes
-// disabled controls — so switching the counter off and on again keeps the tuning.
+// The "enlarged end number" fields and the system-wide time-per-end override only mean
+// something with the end counter on, so their rows are hidden (and the inputs disabled)
+// while it is unchecked. The shared minutes field follows its own toggle too. Their
+// values are still part of the saved config — getFormData() walks form.elements, which
+// includes disabled controls — so switching the counter off and on again keeps them.
 function syncEndCounterFields() {
   const form = document.getElementById("configForm");
   const enabled = form.show_end_number.checked;
@@ -212,6 +213,16 @@ function syncEndCounterFields() {
     }
     input.closest(".field-row").hidden = !enabled;
   }
+
+  const override = form.use_system_end_minutes;
+  override.disabled = !enabled;
+  override.closest(".field-row").hidden = !enabled;
+
+  const minutes = form.system_end_minutes;
+  const overrideOn = enabled && override.checked;
+  minutes.disabled = !overrideOn;
+  minutes.required = overrideOn;
+  minutes.closest(".field-row").hidden = !overrideOn;
 }
 
 function setStatus(text, kind = "") {
@@ -252,6 +263,20 @@ async function saveConfig(e) {
   const saveBtn = document.getElementById("saveBtn");
   saveBtn.disabled = true;
   setStatus("Saving…", "pending");
+
+  // Required while the override is on; a stray value is still validated so a number
+  // typed before toggling it off cannot reach the database.
+  const form = e.target;
+  const rawMinutes = form.system_end_minutes.value.trim();
+  const validMinutes = /^\d+$/.test(rawMinutes) && Number(rawMinutes) >= 1 && Number(rawMinutes) <= 120;
+  const overrideOn = form.show_end_number.checked && form.use_system_end_minutes.checked;
+  if (rawMinutes === "" ? overrideOn : !validMinutes) {
+    setStatus("Minutes per end must be a whole number between 1 and 120.", "error");
+    saveBtn.disabled = false;
+    form.system_end_minutes.focus();
+    return;
+  }
+
   const res = await fetch("/api/timer/config", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

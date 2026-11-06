@@ -192,16 +192,16 @@ def test_end_number_advances_with_the_draw(end_counter, freeze):
 
 
 def test_end_number_stops_at_the_last_end(end_counter, freeze):
-    # 4-minute ends: END 8 starts 28 minutes in, END 9 would start at 32. The 18:30 draw
-    # on this date is the override ("Bonspiel Draw 1"); the weekly draw is excluded.
+    # 4-minute ends: END 10 starts 36 minutes in, END 11 would start at 40. The 18:30
+    # draw on this date is the override ("Bonspiel Draw 1"); the weekly draw is excluded.
     end_counter._conn.execute(
         "UPDATE draw_overrides SET end_minutes = 4 WHERE title = 'Bonspiel Draw 1'"
     )
 
-    freeze("2026-10-21T18:58:00")
-    assert timer_state.get_timer_state()["endNumber"] == 8
+    freeze("2026-10-21T19:06:00")
+    assert timer_state.get_timer_state()["endNumber"] == 10
 
-    freeze("2026-10-21T19:02:00")
+    freeze("2026-10-21T19:10:00")
     assert "endNumber" not in timer_state.get_timer_state()
 
 
@@ -234,3 +234,62 @@ def test_end_number_is_not_sent_before_the_draw_starts(end_counter, freeze):
     assert state["status"] == "pre_draw"
     assert "endNumber" not in state
     assert "drawStart" not in state
+
+
+# ---------------------------------------------------------------------------
+# System-wide time per end (one value for every draw)
+# ---------------------------------------------------------------------------
+
+def test_system_end_minutes_override_every_draw_value(end_counter, freeze):
+    # The draw still stores 14 minutes; the system value must win at read time.
+    end_counter._conn.execute(
+        "UPDATE timer_config SET use_system_end_minutes = 1, system_end_minutes = 9"
+    )
+    freeze(support.END_MID)
+    state = timer_state.get_timer_state()
+
+    assert state["status"] == "running"
+    assert state["endMinutes"] == 9
+    # 45 minutes in with 9-minute ends is END 6 (14-minute ends would be END 4).
+    assert state["endNumber"] == 6
+
+
+def test_system_end_minutes_applies_to_draws_with_no_stored_value(system_end_counter, freeze):
+    freeze(support.END_TWO)
+    state = timer_state.get_timer_state()
+
+    assert state["endMinutes"] == 9
+    assert state["endNumber"] == 2
+    assert _local(state["drawStart"]) == datetime(2026, 10, 21, 18, 30)
+
+
+def test_system_end_minutes_falls_back_to_the_draw_value_when_disabled(end_counter, freeze):
+    end_counter._conn.execute(
+        "UPDATE timer_config SET use_system_end_minutes = 0, system_end_minutes = 9"
+    )
+    freeze(support.END_MID)
+    state = timer_state.get_timer_state()
+
+    # Switching the override off restores the per-draw value that was never touched.
+    assert state["endMinutes"] == 14
+    assert state["endNumber"] == 4
+
+
+def test_system_end_minutes_falls_back_when_the_shared_value_is_missing(end_counter, freeze):
+    end_counter._conn.execute(
+        "UPDATE timer_config SET use_system_end_minutes = 1, system_end_minutes = NULL"
+    )
+    freeze(support.END_MID)
+    state = timer_state.get_timer_state()
+
+    assert state["endMinutes"] == 14
+    assert state["endNumber"] == 4
+
+
+def test_system_end_minutes_is_ignored_when_the_counter_is_off(system_end_counter, freeze):
+    system_end_counter._conn.execute("UPDATE timer_config SET show_end_number = 0")
+    freeze(support.END_MID)
+    state = timer_state.get_timer_state()
+
+    assert state["status"] == "running"
+    assert set(state) == {"status", "drawLabel", "drawMessage", "targetTime", "adminUrl"}

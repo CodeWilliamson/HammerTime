@@ -199,6 +199,7 @@ CONFIG_FIELDS = (
     "pre_draw_warning_threshold", "running_warning_threshold",
     "show_admin_url", "dynamic_timer_format", "show_end_number",
     "end_highlight_percent", "end_highlight_scale", "end_highlight_timer_percent",
+    "use_system_end_minutes", "system_end_minutes",
 )
 
 

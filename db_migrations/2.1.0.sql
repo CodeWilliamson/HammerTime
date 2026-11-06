@@ -26,3 +26,19 @@ UPDATE timer_config SET show_end_number = 0 WHERE show_end_number IS NULL;
 ALTER TABLE timer_config ADD COLUMN end_highlight_percent INTEGER NOT NULL DEFAULT 50;
 ALTER TABLE timer_config ADD COLUMN end_highlight_scale REAL NOT NULL DEFAULT 2;
 ALTER TABLE timer_config ADD COLUMN end_highlight_timer_percent INTEGER NOT NULL DEFAULT 75;
+
+-- One "time per end" for every draw
+--
+-- Some clubs use the same end length for every draw, so the admin can replace the
+-- per-draw end_minutes with a single system-wide value:
+--
+--   use_system_end_minutes  when 1, every draw (weekly and date-specific, plus local
+--                           timers) is labelled with system_end_minutes
+--   system_end_minutes      the shared end length in whole minutes (1-120); NULL until
+--                           the override is configured
+--
+-- The per-draw end_minutes columns are deliberately left untouched: switching the
+-- override off restores whatever each draw had stored.
+ALTER TABLE timer_config ADD COLUMN use_system_end_minutes INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE timer_config ADD COLUMN system_end_minutes INTEGER;
+UPDATE timer_config SET use_system_end_minutes = 0 WHERE use_system_end_minutes IS NULL;

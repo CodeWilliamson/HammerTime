@@ -2,18 +2,24 @@ const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Fri
 let currentDayIndex = new Date().getDay();
 
 // Set from the display config: the "time per end" field is only meaningful (and only
-// shown) when the end counter is switched on there.
+// shown) when the end counter is switched on there and no system-wide value overrides
+// every draw. The stored per-draw value is preserved while the field is hidden.
 let endCounterEnabled = false;
+let systemEndMinutesEnabled = false;
 
 async function loadConfig() {
   try {
     const res = await fetch("/api/timer/config", { credentials: "include" });
-    if (res.ok) endCounterEnabled = Boolean((await res.json()).show_end_number);
+    if (res.ok) {
+      const config = await res.json();
+      endCounterEnabled = Boolean(config.show_end_number);
+      systemEndMinutesEnabled = Boolean(config.use_system_end_minutes);
+    }
   } catch {
     // Leave the field hidden; saving still preserves a draw's existing value.
   }
   const container = document.getElementById("endMinutesContainer");
-  if (container) container.hidden = !endCounterEnabled;
+  if (container) container.hidden = !endCounterEnabled || systemEndMinutesEnabled;
 }
 
 // Render the draw calendar from a { drawsForWeek, futureOverrides } payload.

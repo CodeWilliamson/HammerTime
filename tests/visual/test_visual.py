@@ -79,7 +79,7 @@ def test_running_state(kiosk):
     page = kiosk(support.RUNNING)
 
     assert _classes(page) == {"running"}
-    assert _text(page, "#label") == "Time remaining:"
+    assert _text(page, "#label") == "Time Remaining"
     assert _text(page, "#timer") == "30:00"
     # The running colour comes from timer_config.background_color_running.
     assert _background(page) == "rgb(26, 219, 0)"
@@ -138,7 +138,7 @@ def test_end_number_appears_when_end_two_starts(kiosk):
     # One second before END 2 there is nothing to show; the kiosk's own tick() flips it,
     # so the change does not wait for a server push.
     page = kiosk("2026-10-21T18:43:59", configure=support.enable_end_counter)
-    assert _text(page, "#label") == "Time remaining:"
+    assert _text(page, "#label") == "Time Remaining"
 
     page.clock.fast_forward(1000)
     assert _text(page, "#label") == "END 2"
@@ -148,7 +148,7 @@ def test_end_number_is_hidden_at_the_warning_threshold(kiosk):
     page = kiosk(support.WARNING, configure=support.enable_end_counter)
 
     # END 6 by the schedule, but only 10:00 remain (< the 900 s warning threshold).
-    assert _text(page, "#label") == "Time remaining:"
+    assert _text(page, "#label") == "Time Remaining"
     assert page.locator("#label .end-badge").count() == 0
     assert "end-highlight" not in _classes(page)
 
@@ -156,7 +156,7 @@ def test_end_number_is_hidden_at_the_warning_threshold(kiosk):
 def test_end_number_is_not_shown_when_the_feature_is_off(kiosk):
     page = kiosk(support.END_MID)
 
-    assert _text(page, "#label") == "Time remaining:"
+    assert _text(page, "#label") == "Time Remaining"
     assert page.locator("#label .end-badge").count() == 0
     assert "end-highlight" not in _classes(page)
 
@@ -167,8 +167,8 @@ def test_end_number_is_enlarged_at_the_start_of_an_end(kiosk):
     _no_transitions(page)
 
     assert "end-highlight" in _classes(page)
-    # Enlarged by 1.5× the 8vw status size; the countdown shrinks to 75% of its 32vw.
-    assert _font_size(page, "#label") == pytest.approx(1280 * 0.08 * 1.5, rel=0.01)
+    # Enlarged by 2× the 8vw status size; the countdown shrinks to 75% of its 32vw.
+    assert _font_size(page, "#label") == pytest.approx(1280 * 0.08 * 2, rel=0.01)
     assert _font_size(page, "#timer") == pytest.approx(1280 * 0.32 * 0.75, rel=0.01)
 
 
@@ -241,6 +241,77 @@ def test_tapping_the_screen_starts_a_local_timer(kiosk):
 
     stored = page.evaluate("JSON.parse(localStorage.getItem('localTimer'))")
     assert stored["targetTime"] > 0
+    # The end counter is off, so no end length is asked for and none is stored.
+    assert page.is_hidden("#local-end-row")
+    assert stored["endMinutes"] is None
+
+
+def test_local_timer_shows_the_end_number(kiosk):
+    page = kiosk(support.WAITING, configure=support.enable_end_counter)
+    page.wait_for_function("window.show_end_number === true")
+
+    page.mouse.click(640, 400)
+    page.wait_for_selector("#local-dialog[open]")
+    page.wait_for_function("document.getElementById('local-duration').value !== ''")
+
+    # With the end counter on, the dialog asks for a time per end — left blank.
+    assert page.is_visible("#local-end-minutes")
+    assert page.input_value("#local-end-minutes") == ""
+    page.evaluate("document.getElementById('local-end-minutes').value = '15'")
+    page.click("#local-dialog button[value=start]")
+    page.wait_for_selector("#local-badge:not([hidden])")
+    _no_transitions(page)
+
+    stored = page.evaluate("JSON.parse(localStorage.getItem('localTimer'))")
+    assert stored["endMinutes"] == 15
+    assert stored["startTime"] > 0
+    # END 1 is never shown, so the first end keeps the plain label.
+    assert _text(page, "#label") == "Time Remaining"
+
+    # 15 minutes in: END 2 starts, enlarged like it is for a draw.
+    page.clock.fast_forward(15 * 60 * 1000)
+    assert _text(page, "#label") == "END 2"
+    assert "end-highlight" in _classes(page)
+    assert _font_size(page, "#label") == pytest.approx(1280 * 0.08 * 2, rel=0.01)
+
+    # Halfway through the end it returns to the normal size.
+    page.clock.fast_forward(8 * 60 * 1000)
+    assert "end-highlight" not in _classes(page)
+    assert _font_size(page, "#label") == pytest.approx(1280 * 0.08, rel=0.01)
+
+    # The last 15 minutes are the warning window, where the badge is hidden again.
+    page.clock.fast_forward(57 * 60 * 1000)
+    assert _text(page, "#label") == "Time Remaining"
+    assert page.locator("#label .end-badge").count() == 0
+
+
+def test_local_timer_uses_the_system_time_per_end(kiosk):
+    page = kiosk(support.WAITING, configure=support.enable_system_end_counter)
+    page.wait_for_function("window.use_system_end_minutes === true")
+
+    page.mouse.click(640, 400)
+    page.wait_for_selector("#local-dialog[open]")
+    page.wait_for_function("document.getElementById('local-duration').value !== ''")
+
+    # The shared value replaces the per-timer field entirely.
+    assert page.is_hidden("#local-end-minutes")
+    page.click("#local-dialog button[value=start]")
+    page.wait_for_selector("#local-badge:not([hidden])")
+
+    stored = page.evaluate("JSON.parse(localStorage.getItem('localTimer'))")
+    assert stored["endMinutes"] is None
+    assert _text(page, "#label") == "Time Remaining"
+
+    page.clock.fast_forward(9 * 60 * 1000)
+    assert _text(page, "#label") == "END 2"
+
+
+def test_kiosk_draw_uses_the_system_time_per_end(kiosk):
+    page = kiosk(support.END_MID, configure=support.enable_system_end_counter)
+
+    # 45 minutes into 9-minute ends is END 6 (the draw stores no end length of its own).
+    assert _text(page, "#label") == "END 6"
+    assert _text(page, "#timer") == "45:00"
 
 
 def test_admin_can_log_in_and_create_a_draw(open_page):
@@ -286,6 +357,19 @@ def test_admin_time_per_end_field_follows_the_setting(open_page):
     assert page.is_visible("#endMinutesContainer")
 
 
+def test_admin_time_per_end_field_is_hidden_when_a_system_value_is_used(open_page):
+    page, server, context = open_page(
+        support.DEFAULT_INSTANT, "/login.html", support.enable_system_end_counter
+    )
+    _log_in(context, server)
+    page.goto(server.base_url + "/admin.html")
+    page.wait_for_selector(".draw-card-abs")
+    page.click(".add-btn")
+
+    # The shared value applies to every draw, so the per-draw field is not shown.
+    assert not page.is_visible("#endMinutesContainer")
+
+
 def test_admin_saves_a_time_per_end(open_page):
     page, server, context = open_page(
         support.DEFAULT_INSTANT, "/login.html", support.enable_end_counter
@@ -328,6 +412,58 @@ def test_end_tuning_fields_follow_the_end_counter_setting(open_page):
     page.uncheck("#show_end_number")
     assert page.input_value("#end_highlight_percent_num") == "50"
     assert page.is_disabled("#end_highlight_percent_num")
+
+
+def test_system_end_minutes_fields_follow_the_toggles(open_page):
+    page, server, context = open_page(support.DEFAULT_INSTANT, "/login.html")
+    _log_in(context, server)
+    page.goto(server.base_url + "/settings.html")
+    page.wait_for_selector("#configForm")
+
+    # Both the override toggle and its value are hidden with the end counter off.
+    assert not page.is_checked("#show_end_number")
+    assert page.is_hidden("#use_system_end_minutes")
+    assert page.is_hidden("#system_end_minutes")
+
+    page.check("#show_end_number")
+    assert page.is_visible("#use_system_end_minutes")
+    assert page.is_hidden("#system_end_minutes")
+
+    page.check("#use_system_end_minutes")
+    assert page.is_visible("#system_end_minutes")
+    assert page.is_enabled("#system_end_minutes")
+    assert page.get_attribute("#system_end_minutes", "required") is not None
+
+    page.fill("#system_end_minutes", "9")
+    page.uncheck("#use_system_end_minutes")
+    assert page.is_hidden("#system_end_minutes")
+    assert page.is_disabled("#system_end_minutes")
+    # The value survives so re-enabling the override does not require retyping it.
+    assert page.input_value("#system_end_minutes") == "9"
+
+
+def test_system_end_minutes_is_required_to_save(open_page):
+    page, server, context = open_page(support.DEFAULT_INSTANT, "/login.html")
+    _log_in(context, server)
+    page.goto(server.base_url + "/settings.html")
+    page.wait_for_selector("#configForm")
+
+    page.check("#show_end_number")
+    page.check("#use_system_end_minutes")
+    page.click("#saveBtn")
+
+    assert "Minutes per end must be a whole number between 1 and 120" in _text(page, "#configStatus")
+    config = context.request.get(f"{server.base_url}/api/timer/config").json()
+    assert config["use_system_end_minutes"] == 0
+    assert config["system_end_minutes"] is None
+
+    page.fill("#system_end_minutes", "9")
+    page.click("#saveBtn")
+    page.wait_for_selector("#configStatus:has-text('Saved')")
+
+    config = context.request.get(f"{server.base_url}/api/timer/config").json()
+    assert config["use_system_end_minutes"] == 1
+    assert config["system_end_minutes"] == 9
 
 
 def test_end_percent_fields_are_sliders_for_whole_percents(open_page):
@@ -380,7 +516,7 @@ def test_settings_page_loads_the_current_config(open_page):
     # The end counter ships off, with the enlarged-end defaults behind it.
     assert not page.is_checked("#show_end_number")
     assert page.input_value("#end_highlight_percent_num") == "50"
-    assert page.input_value("#end_highlight_scale") == "1.5"
+    assert page.input_value("#end_highlight_scale") == "2"
     assert page.input_value("#end_highlight_timer_percent_num") == "75"
     assert page.is_disabled("#end_highlight_percent_num")
     # The idle message colour is the base column; its input name must match it exactly.

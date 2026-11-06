@@ -113,6 +113,28 @@
         </div>
         <div class="field-row end-tuning" hidden>
           <div class="field-text">
+            <label for="use_system_end_minutes">Use the same time per end for all draws</label>
+            <p class="field-hint">
+              Applies one time per end to every draw and local timer, ignoring the value
+              stored on each draw. Turning this off restores the per-draw values.
+            </p>
+          </div>
+          <input type="checkbox" id="use_system_end_minutes" name="use_system_end_minutes" />
+        </div>
+        <div class="field-row end-tuning end-system-minutes" hidden>
+          <div class="field-text">
+            <label for="system_end_minutes">Minutes per end</label>
+            <p class="field-hint">
+              Required while the override above is on. Whole minutes between 1 and 120.
+            </p>
+          </div>
+          <div class="suffix-input">
+            <input type="number" min="1" max="120" step="1" id="system_end_minutes" name="system_end_minutes" required />
+            <span>min</span>
+          </div>
+        </div>
+        <div class="field-row end-tuning" hidden>
+          <div class="field-text">
             <label for="end_highlight_percent_num">Enlarge a new end for</label>
             <p class="field-hint">
               Each new end starts with the number enlarged to draw attention, then it returns to

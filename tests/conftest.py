@@ -116,3 +116,14 @@ def end_counter(db):
     db._conn.execute("UPDATE draws SET end_minutes = 14")
     db._conn.execute("UPDATE draw_overrides SET end_minutes = 14")
     return db
+
+
+@pytest.fixture
+def system_end_counter(end_counter):
+    """The end counter with one shared time per end (9 minutes) and no per-draw values."""
+    end_counter._conn.execute(
+        "UPDATE timer_config SET use_system_end_minutes = 1, system_end_minutes = 9"
+    )
+    end_counter._conn.execute("UPDATE draws SET end_minutes = NULL")
+    end_counter._conn.execute("UPDATE draw_overrides SET end_minutes = NULL")
+    return end_counter

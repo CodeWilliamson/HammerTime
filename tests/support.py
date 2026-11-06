@@ -142,6 +142,25 @@ def enable_end_counter(db_file: Path, end_minutes: int = 14) -> None:
         connection.close()
 
 
+def enable_system_end_counter(db_file: Path, end_minutes: int = 9) -> None:
+    """Turn on the end counter with one shared time per end for every draw.
+
+    The per-draw values are cleared so the tests prove the system value is what drives
+    the badge, not a leftover value on the draw.
+    """
+    connection = sqlite3.connect(str(db_file), isolation_level=None)
+    try:
+        connection.execute(
+            "UPDATE timer_config SET show_end_number = 1, "
+            "use_system_end_minutes = 1, system_end_minutes = ?",
+            (end_minutes,),
+        )
+        connection.execute("UPDATE draws SET end_minutes = NULL")
+        connection.execute("UPDATE draw_overrides SET end_minutes = NULL")
+    finally:
+        connection.close()
+
+
 def build_template_database(workdir: Path) -> Path:
     """Run the migration runner in ``workdir`` and return the resulting database."""
     workdir.mkdir(parents=True, exist_ok=True)
