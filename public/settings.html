@@ -31,7 +31,7 @@
         <h2>Typography</h2>
         <div class="field-row">
           <label for="timer_font_size_num">Timer size</label>
-          <div class="size-control" data-size-field="timer_font_size" data-min="5" data-max="50" data-step="0.5">
+          <div class="size-control" data-size-field="timer_font_size" data-min="5" data-max="50" data-step="0.5" data-suffix="vw">
             <input type="hidden" name="timer_font_size" />
             <input type="range" aria-label="Timer size slider" />
             <input type="number" id="timer_font_size_num" />
@@ -40,7 +40,7 @@
         </div>
         <div class="field-row">
           <label for="label_font_size_num">Status size</label>
-          <div class="size-control" data-size-field="label_font_size" data-min="1" data-max="15" data-step="0.5">
+          <div class="size-control" data-size-field="label_font_size" data-min="1" data-max="15" data-step="0.5" data-suffix="vw">
             <input type="hidden" name="label_font_size" />
             <input type="range" aria-label="Status size slider" />
             <input type="number" id="label_font_size_num" />
@@ -49,7 +49,7 @@
         </div>
         <div class="field-row">
           <label for="message_font_size_num">Message size</label>
-          <div class="size-control" data-size-field="message_font_size" data-min="1" data-max="15" data-step="0.5">
+          <div class="size-control" data-size-field="message_font_size" data-min="1" data-max="15" data-step="0.5" data-suffix="vw">
             <input type="hidden" name="message_font_size" />
             <input type="range" aria-label="Message size slider" />
             <input type="number" id="message_font_size_num" />
@@ -113,15 +113,17 @@
         </div>
         <div class="field-row end-tuning" hidden>
           <div class="field-text">
-            <label for="end_highlight_percent">Enlarge a new end for</label>
+            <label for="end_highlight_percent_num">Enlarge a new end for</label>
             <p class="field-hint">
               Each new end starts with the number enlarged to draw attention, then it returns to
               its normal size. This is how much of the end it stays enlarged: 50 is the first
               half, 0 never enlarges it.
             </p>
           </div>
-          <div class="suffix-input">
-            <input type="number" min="0" max="100" step="5" id="end_highlight_percent" name="end_highlight_percent" placeholder="50" />
+          <div class="size-control" data-size-field="end_highlight_percent" data-min="0" data-max="100" data-step="1">
+            <input type="hidden" name="end_highlight_percent" />
+            <input type="range" aria-label="Enlarge a new end for slider" />
+            <input type="number" id="end_highlight_percent_num" />
             <span>%</span>
           </div>
         </div>
@@ -140,15 +142,17 @@
         </div>
         <div class="field-row end-tuning" hidden>
           <div class="field-text">
-            <label for="end_highlight_timer_percent">Countdown size while enlarged</label>
+            <label for="end_highlight_timer_percent_num">Countdown size while enlarged</label>
             <p class="field-hint">
               The countdown shrinks to make room for the bigger end number. 100% leaves it
               unchanged, which can push the top of the display off the screen if the end number
               is very large.
             </p>
           </div>
-          <div class="suffix-input">
-            <input type="number" min="50" max="100" step="5" id="end_highlight_timer_percent" name="end_highlight_timer_percent" placeholder="75" />
+          <div class="size-control" data-size-field="end_highlight_timer_percent" data-min="50" data-max="100" data-step="1">
+            <input type="hidden" name="end_highlight_timer_percent" />
+            <input type="range" aria-label="Countdown size while enlarged slider" />
+            <input type="number" id="end_highlight_timer_percent_num" />
             <span>%</span>
           </div>
         </div>

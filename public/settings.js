@@ -121,11 +121,19 @@ function updatePreview() {
   });
 }
 
-// Font sizes are stored as "<n>vw"; the slider and stepper both edit the hidden field
+// Slider + stepper pairs both edit a hidden field, which is what the form submits.
+// Font sizes are stored as "<n>vw" (data-suffix); percentages as bare whole numbers.
 function clampSize(control, n) {
   const min = parseFloat(control.dataset.min);
   const max = parseFloat(control.dataset.max);
-  return Math.min(max, Math.max(min, n));
+  const clamped = Math.min(max, Math.max(min, n));
+  // Steps of 1 or more are whole-number fields (the percent sliders); snap like the
+  // range input itself does so a typed "50.4" cannot reach the config.
+  return parseFloat(control.dataset.step) >= 1 ? Math.round(clamped) : clamped;
+}
+
+function storedSize(control, n) {
+  return `${n}${control.dataset.suffix || ""}`;
 }
 
 function syncSizeControl(control) {
@@ -133,7 +141,7 @@ function syncSizeControl(control) {
   const [range, num] = control.querySelectorAll('input[type="range"], input[type="number"]');
   const parsed = parseFloat(hidden.value);
   const n = clampSize(control, Number.isFinite(parsed) ? parsed : parseFloat(control.dataset.min));
-  hidden.value = `${n}vw`;
+  hidden.value = storedSize(control, n);
   range.value = n;
   num.value = n;
 }
@@ -148,14 +156,14 @@ function setupSizeControls() {
       input.step = control.dataset.step;
     }
     range.addEventListener("input", () => {
-      hidden.value = `${range.value}vw`;
+      hidden.value = storedSize(control, range.value);
       num.value = range.value;
     });
     num.addEventListener("input", () => {
       const n = parseFloat(num.value);
       if (!Number.isFinite(n)) return;
       const clamped = clampSize(control, n);
-      hidden.value = `${clamped}vw`;
+      hidden.value = storedSize(control, clamped);
       range.value = clamped;
     });
     num.addEventListener("change", () => syncSizeControl(control));
@@ -196,7 +204,12 @@ function syncEndCounterFields() {
   const enabled = form.show_end_number.checked;
   for (const name of ["end_highlight_percent", "end_highlight_scale", "end_highlight_timer_percent"]) {
     const input = form[name];
-    input.disabled = !enabled;
+    // Percent fields are slider+stepper pairs; the hidden field carries the name, so the
+    // visible controls have to be disabled alongside it.
+    const control = input.closest(".size-control");
+    for (const el of control ? control.querySelectorAll("input") : [input]) {
+      el.disabled = !enabled;
+    }
     input.closest(".field-row").hidden = !enabled;
   }
 }

@@ -315,19 +315,56 @@ def test_end_tuning_fields_follow_the_end_counter_setting(open_page):
     page.wait_for_selector("#configForm")
 
     # Nothing to tune while the end counter is off.
-    assert page.is_disabled("#end_highlight_percent")
+    assert page.is_disabled("#end_highlight_percent_num")
     assert page.is_disabled("#end_highlight_scale")
-    assert page.is_disabled("#end_highlight_timer_percent")
+    assert page.is_disabled("#end_highlight_timer_percent_num")
 
     page.check("#show_end_number")
-    assert page.is_enabled("#end_highlight_percent")
+    assert page.is_enabled("#end_highlight_percent_num")
     assert page.is_enabled("#end_highlight_scale")
-    assert page.is_enabled("#end_highlight_timer_percent")
+    assert page.is_enabled("#end_highlight_timer_percent_num")
 
     # Their values are still saved while disabled, so switching it off keeps the tuning.
     page.uncheck("#show_end_number")
-    assert page.input_value("#end_highlight_percent") == "50"
-    assert page.is_disabled("#end_highlight_percent")
+    assert page.input_value("#end_highlight_percent_num") == "50"
+    assert page.is_disabled("#end_highlight_percent_num")
+
+
+def test_end_percent_fields_are_sliders_for_whole_percents(open_page):
+    page, server, context = open_page(
+        support.DEFAULT_INSTANT, "/login.html", support.enable_end_counter
+    )
+    _log_in(context, server)
+    page.goto(server.base_url + "/settings.html")
+    page.wait_for_selector("#configForm")
+
+    percent = page.locator('.size-control[data-size-field="end_highlight_percent"] input[type="range"]')
+    timer_percent = page.locator(
+        '.size-control[data-size-field="end_highlight_timer_percent"] input[type="range"]'
+    )
+
+    # The slider and the stepper both write the hidden field the form submits.
+    percent.fill("30")
+    assert page.input_value("#end_highlight_percent_num") == "30"
+    assert page.input_value('input[name="end_highlight_percent"]') == "30"
+
+    # A typed fraction snaps to a whole percent, like the slider does.
+    page.fill("#end_highlight_timer_percent_num", "60.4")
+    page.locator("#end_highlight_timer_percent_num").blur()
+    assert page.input_value("#end_highlight_timer_percent_num") == "60"
+    assert timer_percent.input_value() == "60"
+
+    # ...and so does an out-of-range value.
+    page.fill("#end_highlight_percent_num", "150")
+    page.locator("#end_highlight_percent_num").blur()
+    assert page.input_value("#end_highlight_percent_num") == "100"
+    assert percent.input_value() == "100"
+
+    page.click("#saveBtn")
+    page.wait_for_selector("#configStatus:has-text('Saved')")
+    config = context.request.get(f"{server.base_url}/api/timer/config").json()
+    assert config["end_highlight_percent"] == 100
+    assert config["end_highlight_timer_percent"] == 60
 
 
 def test_settings_page_loads_the_current_config(open_page):
@@ -342,10 +379,10 @@ def test_settings_page_loads_the_current_config(open_page):
     assert page.is_checked("#dynamic_timer_format")
     # The end counter ships off, with the enlarged-end defaults behind it.
     assert not page.is_checked("#show_end_number")
-    assert page.input_value("#end_highlight_percent") == "50"
+    assert page.input_value("#end_highlight_percent_num") == "50"
     assert page.input_value("#end_highlight_scale") == "1.5"
-    assert page.input_value("#end_highlight_timer_percent") == "75"
-    assert page.is_disabled("#end_highlight_percent")
+    assert page.input_value("#end_highlight_timer_percent_num") == "75"
+    assert page.is_disabled("#end_highlight_percent_num")
     # The idle message colour is the base column; its input name must match it exactly.
     assert page.input_value('input[name="message_color"]') == "#eeeeee"
 
@@ -418,6 +455,6 @@ def test_settings_end_counter_screenshot(open_page, screenshot):
     _log_in(context, server)
     page.goto(server.base_url + "/settings.html")
     page.wait_for_selector("#configForm")
-    page.locator("#end_highlight_timer_percent").scroll_into_view_if_needed()
+    page.locator("#end_highlight_timer_percent_num").scroll_into_view_if_needed()
 
     screenshot(page, "settings-end-counter")

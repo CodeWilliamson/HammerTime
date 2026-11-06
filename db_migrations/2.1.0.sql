@@ -24,5 +24,5 @@ UPDATE timer_config SET show_end_number = 0 WHERE show_end_number IS NULL;
 --                                shrinks to make room instead of pushing content off the
 --                                screen
 ALTER TABLE timer_config ADD COLUMN end_highlight_percent INTEGER NOT NULL DEFAULT 50;
-ALTER TABLE timer_config ADD COLUMN end_highlight_scale REAL NOT NULL DEFAULT 1.5;
+ALTER TABLE timer_config ADD COLUMN end_highlight_scale REAL NOT NULL DEFAULT 2;
 ALTER TABLE timer_config ADD COLUMN end_highlight_timer_percent INTEGER NOT NULL DEFAULT 75;

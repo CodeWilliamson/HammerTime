@@ -16,7 +16,7 @@ const LOCAL_KEY = "localTimer"; // { targetTime (ms), message }
 const LOCAL_COMPLETE_MS = 10 * 60 * 1000; // matches the central 'complete' window
 
 // Keep in sync with MAX_ENDS in hammertime/timer_state.py.
-const MAX_ENDS = 8;
+const MAX_ENDS = 10;
 
 function getLocalTimer() {
   try {
