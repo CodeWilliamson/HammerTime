@@ -10,6 +10,14 @@ const ELEMENTS = [
   { key: "status", label: "Status" },
   { key: "message", label: "Message" },
 ];
+// Preview samples. `seconds` is kept numeric so updatePreview() can re-render the
+// countdown when the dynamic format checkbox changes.
+const PREVIEW_SAMPLES = {
+  "": { status: "Next draw: 7:00 PM", seconds: null, message: "Social" },
+  running: { status: "Time remaining:", seconds: 45 * 60, message: "Men's House" },
+  warning: { status: "Time remaining:", seconds: 45, message: "Women's House" },
+  critical: { status: "Time's Up!", seconds: 0, message: "" },
+};
 let savedConfig = {};
 let baseline = {};
 
@@ -61,16 +69,8 @@ function formatTimeParts(seconds, dynamic) {
 
 function buildPreview() {
   const grid = document.getElementById("previewGrid");
-  // Seconds rather than formatted text, so updatePreview() can re-render the
-  // timer when the dynamic format checkbox changes.
-  const samples = {
-    "": { status: "Next draw: 7:00 PM", seconds: null, message: "Social" },
-    running: { status: "Time remaining:", seconds: 45 * 60, message: "Men's House" },
-    warning: { status: "Time remaining:", seconds: 45, message: "Women's House" },
-    critical: { status: "Time's Up!", seconds: 0, message: "" },
-  };
   STATES.forEach((state) => {
-    const s = samples[state.key];
+    const s = PREVIEW_SAMPLES[state.key];
     const tile = document.createElement("div");
     tile.className = "preview-tile";
     tile.dataset.state = state.key;
@@ -90,13 +90,33 @@ function buildPreview() {
 function updatePreview() {
   const form = document.getElementById("configForm");
   const dynamicEnabled = form.dynamic_timer_format.checked;
+  // Same fallback as the kiosk: a blank/invalid threshold means 900 s.
+  const warningThreshold = parseFloat(form.running_warning_threshold.value) || 900;
   document.querySelectorAll(".preview-tile").forEach((tile) => {
     const state = tile.dataset.state;
     const val = (el) => form[fieldName(el, state)].value;
     tile.style.background = val("background");
     tile.querySelector(".p-timer").style.color = val("timer");
-    tile.querySelector(".p-status").style.color = val("status");
     tile.querySelector(".p-message").style.color = val("message");
+
+    const status = tile.querySelector(".p-status");
+    status.style.color = val("status");
+    // While a draw is running the kiosk shows an END badge in place of the status text.
+    // It needs only the end counter on and a time per end, so the preview shows it even
+    // when no shared "minutes per end" override is configured (a draw's own value is
+    // enough on the real display). Like currentEnd() in app.js, the badge is hidden once
+    // the countdown reaches the running warning threshold, and END 1 is never shown.
+    const seconds = tile.dataset.seconds == null ? null : Number(tile.dataset.seconds);
+    const showEnd = form.show_end_number.checked && seconds > 0 && seconds >= warningThreshold;
+    status.textContent = "";
+    if (showEnd) {
+      const badge = document.createElement("span");
+      badge.className = "p-end-badge";
+      badge.textContent = "END 2";
+      status.appendChild(badge);
+    } else {
+      status.textContent = PREVIEW_SAMPLES[state].status;
+    }
 
     // The kiosk ignores the dynamic setting for a finished countdown, so "Game End" keeps 0:00:00
     const dynamic = dynamicEnabled && !(state === "critical" && Number(tile.dataset.seconds) === 0);
@@ -116,7 +136,7 @@ function updatePreview() {
     // Tile is a size container, so 1cqw here equals 1vw on the kiosk
     const size = (name, fallback) => `${parseFloat(form[name].value) || fallback}cqw`;
     timer.style.fontSize = size("timer_font_size", 28);
-    tile.querySelector(".p-status").style.fontSize = size("label_font_size", 5);
+    status.style.fontSize = size("label_font_size", 5);
     tile.querySelector(".p-message").style.fontSize = size("message_font_size", 5);
   });
 }

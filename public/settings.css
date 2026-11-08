@@ -116,6 +116,20 @@ main {
   line-height: 1;
 }
 
+/* Mirrors #label .end-badge in index.html. The border uses currentColor, so the badge
+   follows the tile's status colour like the kiosk's does. */
+.p-end-badge {
+  display: inline-block;
+  padding: 0.04em;
+  border: 0.06em solid currentColor;
+  border-radius: 0.2em;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-indent: 0.12em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
 .p-timer-sec {
   font-size: 0.3em;
   align-content: center;

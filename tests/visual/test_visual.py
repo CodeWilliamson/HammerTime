@@ -466,6 +466,50 @@ def test_system_end_minutes_is_required_to_save(open_page):
     assert config["system_end_minutes"] == 9
 
 
+def test_preview_shows_the_end_number_with_the_counter_on(open_page):
+    page, server, context = open_page(support.DEFAULT_INSTANT, "/login.html")
+    _log_in(context, server)
+    page.goto(server.base_url + "/settings.html")
+    page.wait_for_selector("#configForm")
+
+    running = '.preview-tile[data-state="running"] .p-status'
+    warning = '.preview-tile[data-state="warning"] .p-status'
+
+    # Off by default: every tile keeps its status text.
+    assert _text(page, running) == "Time remaining:"
+    assert page.locator(".p-end-badge").count() == 0
+
+    # A draw's own time per end is enough: this config has no shared "minutes per end"
+    # value, so the preview must not wait for one to be supplied.
+    page.check("#show_end_number")
+    assert _text(page, running) == "END 2"
+    assert page.locator(".p-end-badge").count() == 1
+
+    # The warning sample has only 45 s left, inside the running warning threshold, where
+    # the kiosk hides the badge again. A finished countdown never shows it either.
+    assert _text(page, warning) == "Time remaining:"
+    assert _text(page, '.preview-tile[data-state="critical"] .p-status') == "Time's Up!"
+
+    page.uncheck("#show_end_number")
+    assert _text(page, running) == "Time remaining:"
+    assert page.locator(".p-end-badge").count() == 0
+
+
+def test_preview_end_number_follows_the_running_warning_threshold(open_page):
+    page, server, context = open_page(support.DEFAULT_INSTANT, "/login.html")
+    _log_in(context, server)
+    page.goto(server.base_url + "/settings.html")
+    page.wait_for_selector("#configForm")
+    page.check("#show_end_number")
+
+    warning = '.preview-tile[data-state="warning"] .p-status'
+    assert _text(page, warning) == "Time remaining:"
+
+    # The warning sample sits at 45 s, so a 45 s threshold still counts as "above" it.
+    page.fill("#running_warning_threshold", "45")
+    assert _text(page, warning) == "END 2"
+
+
 def test_end_percent_fields_are_sliders_for_whole_percents(open_page):
     page, server, context = open_page(
         support.DEFAULT_INSTANT, "/login.html", support.enable_end_counter
