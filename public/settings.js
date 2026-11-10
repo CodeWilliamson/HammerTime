@@ -14,8 +14,8 @@ const ELEMENTS = [
 // countdown when the dynamic format checkbox changes.
 const PREVIEW_SAMPLES = {
   "": { status: "Next draw: 7:00 PM", seconds: null, message: "Social" },
-  running: { status: "Time remaining:", seconds: 45 * 60, message: "Men's House" },
-  warning: { status: "Time remaining:", seconds: 45, message: "Women's House" },
+  running: { status: "Time Remaining", seconds: 45 * 60, message: "Men's House" },
+  warning: { status: "Time Remaining", seconds: 28, message: "Women's House" },
   critical: { status: "Time's Up!", seconds: 0, message: "" },
 };
 let savedConfig = {};
