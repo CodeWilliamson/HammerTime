@@ -414,4 +414,26 @@ input[type="color"]:focus-visible {
   .matrix-head {
     font-size: 0.7rem;
   }
+
+  /* Rows with a slider cannot share a line with their label on a phone: the label gets
+     squeezed while the slider and stepper overflow. Stack them instead, with the control
+     on top and its description (label and hint) underneath. Desktop keeps label-left /
+     control-right. `:has()` degrades to the old side-by-side layout where unsupported. */
+  .field-row:has(.size-control) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+
+  .field-row:has(.size-control) .size-control {
+    order: -1;
+    width: 100%;
+  }
+
+  /* Let the slider take the width the label used to occupy; the stepper keeps its size. */
+  .field-row:has(.size-control) .size-control input[type="range"] {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
 }
